@@ -60,7 +60,7 @@ class StreamExample():
                 self.qt_app = QApplication(sys.argv)
             
             # Create the live plotter
-            self.live_plotter = HDF5LivePlotter('/tmp/data.hdf5')
+            self.live_plotter = HDF5LivePlotter(output_file, debug=debug)
 
     def signal_handler(self, sig, frame):
         print("Stopping data acquisition/saving")
