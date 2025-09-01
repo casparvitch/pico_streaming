@@ -29,6 +29,7 @@ class PicoDevice:
         data_queue,
         empty_queue,
         data_buffers,
+        shutdown_event,
     ):
         ####### Setup variables #######
         self.handle = ctypes.c_int16(handle)
@@ -49,7 +50,7 @@ class PicoDevice:
         self.callbackFuncPtr = ps.StreamingReadyType(self.streaming_callback)
         self.channel_range = None
         self.max_adc = ctypes.c_int16()
-        self.running = True
+        self.shutdown_event = shutdown_event
         ####### Callback Function Variables #######
 
         self.nextSample = 0
@@ -87,8 +88,6 @@ class PicoDevice:
         status = ps.ps5000aMaximumValue(self.handle, ctypes.byref(self.max_adc))
         check_status(status, "ps5000aMaximumValue")
 
-    def stop(self):
-        self.running = False
 
     def set_channel(self, chan, en, coup, range, offset):
         channel_range = ps.PS5000A_RANGE[range]
@@ -171,7 +170,7 @@ class PicoDevice:
         _param,
     ):
 
-        if self.running:
+        if not self.shutdown_event.is_set():
             if noOfSamples > 0:
                 self.captured_samples += noOfSamples
                 len_data = noOfSamples
@@ -204,7 +203,7 @@ class PicoDevice:
 
     def run_capture(self):
         self.run_streaming()
-        while self.running:
+        while not self.shutdown_event.is_set():
             ps.ps5000aGetStreamingLatestValues(self.handle, self.callbackFuncPtr, None)
             # Give the CPU a break, crucial for preventing a busy-wait loop
             time.sleep(0.01)

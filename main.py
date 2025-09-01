@@ -38,7 +38,7 @@ class StreamExample:
         self.pico_auto_stop_stream = False
         # --- End Configuration ---
 
-        self.running = True
+        self.shutdown_event = threading.Event()
         data_queue = queue.Queue()
         empty_queue = queue.Queue()
         data_buffers = []
@@ -57,6 +57,7 @@ class StreamExample:
             data_queue,
             empty_queue,
             data_buffers,
+            self.shutdown_event,
         )
 
         self.pico_device.set_channel(
@@ -86,6 +87,7 @@ class StreamExample:
             empty_queue,
             data_buffers,
             output_file,
+            self.shutdown_event,
             **metadata,
         )
 
@@ -116,15 +118,11 @@ class StreamExample:
         self.shutdown()
 
     def shutdown(self):
-        if not self.running:
+        if self.shutdown_event.is_set():
             return
-        self.running = False
+        self.shutdown_event.set()
 
         logger.info("Stopping data acquisition and saving...")
-
-        # 1. Signal threads to stop
-        self.consumer.stop()
-        self.pico_device.stop()
 
         # 2. Stop plotter timer and close window
         if self.live_plotter:
@@ -135,10 +133,14 @@ class StreamExample:
         logger.info("Waiting for Picoscope thread to terminate...")
         if hasattr(self, "pico_thread") and self.pico_thread.is_alive():
             self.pico_thread.join(timeout=2.0)
+            if self.pico_thread.is_alive():
+                logger.critical("Pico thread failed to terminate.")
 
         logger.info("Waiting for Consumer thread to terminate...")
         if hasattr(self, "consumer_thread") and self.consumer_thread.is_alive():
             self.consumer_thread.join(timeout=2.0)
+            if self.consumer_thread.is_alive():
+                logger.critical("Consumer thread failed to terminate.")
 
         # 4. Now safe to close device
         self.pico_device.close_device()
