@@ -38,7 +38,7 @@ class Consumer:
             'chARange': self.chARange,
             'maxADC': self.maxADC
         }
-        with h5py.File('/tmp/data.hdf5','w') as f:
+        with h5py.File(self.file_name,'w') as f:
             metadata_group = f.create_group('metadata')
             for key, value in metadata.items():
                 metadata_group.attrs[key] = value

@@ -10,7 +10,7 @@ from pico import PicoDevice
 
 class StreamExample():
 
-    def __init__(self, enable_live_plot=False):
+    def __init__(self, enable_live_plot=False, output_file='/tmp/data.hdf5', debug=False):
 
         data_queue = queue.Queue()
         empty_queue = queue.Queue()
@@ -30,7 +30,7 @@ class StreamExample():
             data_buffers.append(np.empty((buffer_size,), dtype='int16'))
             empty_queue.put(idx)
         
-        self.consumer = Consumer(buffer_size,data_queue,empty_queue,data_buffers,file_name)
+        self.consumer = Consumer(buffer_size,data_queue,empty_queue,data_buffers,output_file)
         self.pico_device = PicoDevice(0,"PS5000A_DR_12BIT",640000,1,buffer_size,data_queue,empty_queue,data_buffers)
         
         self.pico_device.set_channel('setChA','PS5000A_CHANNEL_A',1,'PS5000A_DC','PS5000A_20V',0.0)
@@ -121,13 +121,25 @@ class StreamExample():
 
 if __name__ == '__main__':
     import argparse
+    from datetime import datetime
     
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='PicoScope Data Acquisition')
     parser.add_argument('--plot', action='store_true', 
                        help='Enable live plotting (requires PyQt5 and pyqtgraph)')
+    parser.add_argument('--output', '-o',
+                       help='Output HDF5 file (default: auto-timestamped in /tmp/)')
+    parser.add_argument('--debug', action='store_true',
+                       help='Enable debug logging')
     args = parser.parse_args()
     
+    # Auto-generate filename if not specified
+    if not args.output:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        args.output = f'/tmp/data_{timestamp}.hdf5'
+    
+    print(f"Output file: {args.output}")
+    
     # Create and run the streamer
-    streamer = StreamExample(enable_live_plot=args.plot)
+    streamer = StreamExample(enable_live_plot=args.plot, output_file=args.output, debug=args.debug)
     streamer.run()
