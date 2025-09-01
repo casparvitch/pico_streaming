@@ -104,9 +104,10 @@ class StreamExample():
                 # Wait for acquisition to complete in background
                 self.consumer_thread.join()        
                 self.pico_thread.join()
-                # Signal Qt to quit when acquisition done
-                if self.qt_app:
-                    self.qt_app.quit()
+                # Notify user but keep plot open for examination
+                print("\n🎯 Acquisition complete!")
+                print("📊 Plot window shows captured data")
+                print("💡 Close the plot window or press Ctrl+C to exit")
             
             monitor_thread = threading.Thread(target=acquisition_monitor, daemon=True)
             monitor_thread.start()

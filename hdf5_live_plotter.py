@@ -79,9 +79,11 @@ class HDF5LivePlotter(QMainWindow):
         self.status_label = QLabel('Status: Waiting for data...')
         self.samples_label = QLabel('Samples: 0')
         self.rate_label = QLabel('Rate: 0 MS/s')
+        self.acq_status_label = QLabel('Acquisition: Starting...')
         status_layout.addWidget(self.status_label)
         status_layout.addWidget(self.samples_label)
         status_layout.addWidget(self.rate_label)
+        status_layout.addWidget(self.acq_status_label)
         status_layout.addStretch()
         layout.addLayout(status_layout)
         
@@ -169,6 +171,18 @@ class HDF5LivePlotter(QMainWindow):
                 rate_ms = (current_size / elapsed_time / 1_000_000) if elapsed_time > 0 and current_size > 0 else 0
                 self.rate_label.setText(f'Rate: {rate_ms:.1f} MS/s')
                 self.status_label.setText(f'Status: Live streaming (Updates: {self.file_read_count})')
+                
+                # Check if acquisition might be complete (no new data for a while)
+                if hasattr(self, 'last_data_time'):
+                    time_since_data = time.time() - self.last_data_time
+                    if time_since_data > 2.0:  # No new data for 2 seconds
+                        self.acq_status_label.setText('Acquisition: Complete ✓')
+                    else:
+                        self.acq_status_label.setText('Acquisition: Active')
+                else:
+                    self.acq_status_label.setText('Acquisition: Active')
+                
+                self.last_data_time = time.time()
                 
         except (FileNotFoundError, OSError) as e:
             self.logger.debug(f"Update {self.update_count}: File not found - {e}")
@@ -261,7 +275,7 @@ class HDF5LivePlotter(QMainWindow):
         return decimated
     
     def create_time_axis(self, n_samples):
-        """Create time axis in seconds"""
+        """Create time axis in seconds - show relative time for oscilloscope view"""
         # Time per sample in seconds
         time_per_sample = self.sample_interval_ns * 1e-9
         
@@ -269,16 +283,14 @@ class HDF5LivePlotter(QMainWindow):
         # Each pair of decimated points represents 'decimation_factor' original samples
         effective_time_per_point = time_per_sample * (self.decimation_factor / 2)
         
-        # Calculate the start time based on where our display window starts in the file
-        start_time = self.data_start_sample * time_per_sample
+        # For oscilloscope-style display, show relative time (0 to window_duration)
+        # This gives a stable, sliding window view
+        window_duration = len(self.display_data) * time_per_sample
+        time_axis = np.linspace(0, window_duration, n_samples)
         
-        # Create time axis that reflects the actual position in the data stream
-        time_axis = start_time + np.arange(n_samples) * effective_time_per_point
-        
-        self.logger.debug(f"Time axis: start={start_time:.3f}s, "
-                         f"end={time_axis[-1]:.3f}s, "
+        self.logger.debug(f"Time axis: 0s to {window_duration:.3f}s, "
                          f"samples={n_samples}, "
-                         f"data_start_sample={self.data_start_sample}")
+                         f"display_buffer_size={len(self.display_data):,}")
         
         return time_axis
     
