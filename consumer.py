@@ -3,10 +3,22 @@ import h5py
 import time
 import numpy as np
 import os
+from loguru import logger
 
 
 class Consumer:
-    def __init__(self, buffer_size, data_queue, empty_queue, data_buffers, file_name):
+    def __init__(
+        self,
+        buffer_size,
+        data_queue,
+        empty_queue,
+        data_buffers,
+        file_name,
+        cmaxSamples,
+        timeIntervalns,
+        chARange,
+        maxADC,
+    ):
         self.buffer_size = buffer_size
         self.data_queue = data_queue
         self.empty_queue = empty_queue
@@ -16,18 +28,12 @@ class Consumer:
 
         self.values_written = 0
 
-        self.cmaxSamples = 0
-        self.timeIntervalns = 0
-        self.chARange = 0
-        self.maxADC = 0
-
-        self.empty_con_queue_count = 0
-
-    def set_metadata(self, cmaxSamples, timeIntervalns, chARange, maxADC):
         self.cmaxSamples = cmaxSamples
         self.timeIntervalns = timeIntervalns
         self.chARange = chARange
         self.maxADC = maxADC
+
+        self.empty_con_queue_count = 0
 
     def stop(self):
         self.running = False
@@ -44,7 +50,7 @@ class Consumer:
         # Force overwrite of existing file
         if os.path.exists(self.file_name):
             os.remove(self.file_name)
-            print(f"Removed existing file: {self.file_name}")
+            logger.info(f"Removed existing file: {self.file_name}")
 
         with h5py.File(self.file_name, "w") as f:
             metadata_group = f.create_group("metadata")
@@ -73,8 +79,10 @@ class Consumer:
 
                 except queue.Empty:
                     self.empty_con_queue_count += 1
+                    # This is expected when acquisition stops, so no need to log as a warning
+                    if self.running:
+                        logger.debug("Consumer queue was empty.")
 
-        print(
-            "Number of times consumer couldnt obtain queue: ",
-            self.empty_con_queue_count,
+        logger.info(
+            f"Consumer couldn't obtain data from queue {self.empty_con_queue_count} times."
         )

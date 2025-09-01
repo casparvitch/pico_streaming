@@ -2,7 +2,7 @@ import sys
 import time
 import numpy as np
 import h5py
-import logging
+from loguru import logger
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -33,16 +33,6 @@ class HDF5LivePlotter(QMainWindow):
         self.decimation_factor = 150  # 15M -> 100k display points
         self.debug = debug
 
-        # Setup logging
-        if self.debug:
-            logging.basicConfig(
-                level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
-            )
-            self.logger = logging.getLogger(__name__)
-        else:
-            self.logger = logging.getLogger(__name__)
-            self.logger.setLevel(logging.WARNING)
-
         # Data storage
         self.display_data = np.array([])
         self.time_data = np.array([])
@@ -66,7 +56,7 @@ class HDF5LivePlotter(QMainWindow):
         self.timer.timeout.connect(self.update_from_file)
         self.timer.start(self.update_interval_ms)
 
-        self.logger.info(
+        logger.info(
             f"HDF5LivePlotter initialized: path={hdf5_path}, interval={update_interval_ms}ms"
         )
 
@@ -133,7 +123,7 @@ class HDF5LivePlotter(QMainWindow):
                 self.ch_range = metadata.attrs.get("chARange", None)
                 self.max_adc = metadata.attrs.get("maxADC", None)
         except Exception as e:
-            print(f"Warning: Could not read metadata: {e}")
+            logger.warning(f"Could not read metadata: {e}")
 
     def update_from_file(self):
         """Periodically read the latest window of data from the HDF5 file."""
@@ -161,7 +151,7 @@ class HDF5LivePlotter(QMainWindow):
                 data_window = dataset[start_index:current_size]
                 self.file_read_count += 1
 
-                self.logger.debug(
+                logger.debug(
                     f"Update {self.update_count}: Reading window of {len(data_window):,} samples from index {start_index:,}"
                 )
 
@@ -187,7 +177,7 @@ class HDF5LivePlotter(QMainWindow):
         except (FileNotFoundError, OSError):
             self.status_label.setText(f"Status: Waiting for {self.hdf5_path}")
         except Exception as e:
-            self.logger.error(f"Update {self.update_count}: Error reading file - {e}")
+            logger.error(f"Update {self.update_count}: Error reading file - {e}")
             self.status_label.setText(f"Status: Error reading file - {str(e)}")
 
     def update_display(self, data_window):
@@ -198,7 +188,7 @@ class HDF5LivePlotter(QMainWindow):
         self.display_data = data_window
         self.display_update_count += 1
 
-        self.logger.debug(
+        logger.debug(
             f"Display update {self.display_update_count}: "
             f"Displaying window of {len(self.display_data):,} samples, "
             f"starting at sample {self.data_start_sample:,}"
@@ -221,7 +211,7 @@ class HDF5LivePlotter(QMainWindow):
         # Create time axis for the current window
         time_axis = self.create_time_axis(len(voltage_data))
 
-        self.logger.debug(
+        logger.debug(
             f"Display update {self.display_update_count}: "
             f"Decimated to {len(voltage_data):,} points, "
             f"time range: {time_axis[0]:.3f}s to {time_axis[-1]:.3f}s"
@@ -280,7 +270,7 @@ class HDF5LivePlotter(QMainWindow):
         # Create a time axis that spans this window for the decimated data points
         time_axis = np.linspace(start_time, end_time, n_samples)
 
-        self.logger.debug(
+        logger.debug(
             f"Time axis: {start_time:.3f}s to {end_time:.3f}s, "
             f"samples={n_samples}, "
             f"display_buffer_size={len(self.display_data):,}"

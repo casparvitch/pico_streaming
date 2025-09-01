@@ -3,6 +3,7 @@ import signal
 import threading
 import numpy as np
 import sys
+from loguru import logger
 
 from consumer import Consumer
 from pico import PicoDevice
@@ -37,6 +38,7 @@ class StreamExample:
         self.pico_auto_stop_stream = False
         # --- End Configuration ---
 
+        self.running = True
         data_queue = queue.Queue()
         empty_queue = queue.Queue()
         data_buffers = []
@@ -46,13 +48,6 @@ class StreamExample:
             data_buffers.append(np.empty((self.consumer_buffer_size,), dtype="int16"))
             empty_queue.put(idx)
 
-        self.consumer = Consumer(
-            self.consumer_buffer_size,
-            data_queue,
-            empty_queue,
-            data_buffers,
-            output_file,
-        )
         self.pico_device = PicoDevice(
             0,  # handle
             self.pico_resolution,
@@ -85,7 +80,14 @@ class StreamExample:
 
         # Get metadata from configured device and pass to consumer
         metadata = self.pico_device.get_metadata()
-        self.consumer.set_metadata(**metadata)
+        self.consumer = Consumer(
+            self.consumer_buffer_size,
+            data_queue,
+            empty_queue,
+            data_buffers,
+            output_file,
+            **metadata,
+        )
 
         self.consumer_thread = threading.Thread(target=self.consumer.consume)
         self.pico_thread = threading.Thread(target=self.pico_device.run_capture)
@@ -110,22 +112,33 @@ class StreamExample:
             self.live_plotter = HDF5LivePlotter(output_file, debug=debug)
 
     def signal_handler(self, sig, frame):
-        print("Stopping data acquisition/saving")
+        logger.warning("Ctrl+C detected. Shutting down.")
+        self.shutdown()
 
-        # 1. Signal everything to stop
+    def shutdown(self):
+        if not self.running:
+            return
+        self.running = False
+
+        logger.info("Stopping data acquisition and saving...")
+
+        # 1. Signal threads to stop
         self.consumer.stop()
-        self.pico_device.running = False
+        self.pico_device.stop()
 
         # 2. Stop plotter timer and close window
         if self.live_plotter:
-            self.live_plotter.timer.stop()  # Stop the update timer
-            self.live_plotter.close()  # Close the window
+            self.live_plotter.timer.stop()
+            self.live_plotter.close()
 
-        # 3. Wait for threads to actually finish
-        if hasattr(self, "consumer_thread"):
-            self.consumer_thread.join(timeout=2.0)
-        if hasattr(self, "pico_thread"):
+        # 3. Wait for threads to finish
+        logger.info("Waiting for Picoscope thread to terminate...")
+        if hasattr(self, "pico_thread") and self.pico_thread.is_alive():
             self.pico_thread.join(timeout=2.0)
+
+        logger.info("Waiting for Consumer thread to terminate...")
+        if hasattr(self, "consumer_thread") and self.consumer_thread.is_alive():
+            self.consumer_thread.join(timeout=2.0)
 
         # 4. Now safe to close device
         self.pico_device.close_device()
@@ -134,6 +147,8 @@ class StreamExample:
         if self.qt_app:
             self.qt_app.quit()
 
+        logger.success("Shutdown complete.")
+
     def run(self):
         # Start acquisition threads
         self.consumer_thread.start()
@@ -141,36 +156,17 @@ class StreamExample:
 
         # Handle Qt event loop if plotting is enabled
         if self.enable_live_plot and self.qt_app:
-            # Show plotter window
+            # Show plotter window and run Qt event loop (blocking)
             self.live_plotter.show()
-
-            # Run acquisition monitoring in background thread
-            import threading
-
-            def acquisition_monitor():
-                # Wait for acquisition to complete in background
-                self.consumer_thread.join()
-                self.pico_thread.join()
-                # Notify user but keep plot open for examination
-                print("\n🎯 Acquisition complete!")
-                print("📊 Plot window shows captured data")
-                print("💡 Close the plot window or press Ctrl+C to exit")
-
-            monitor_thread = threading.Thread(target=acquisition_monitor, daemon=True)
-            monitor_thread.start()
-
-            # Run Qt event loop in main thread (blocking until quit)
             self.qt_app.exec_()
+
+            # Once the plot window is closed, initiate shutdown
+            self.shutdown()
         else:
             # Original behavior for non-plotting mode
             self.consumer_thread.join()
             self.pico_thread.join()
-
-        # Notify user of completion
-        print("🎯 Acquisition complete!")
-        if self.enable_live_plot:
-            print("📊 Plot window remains open for data examination")
-            print("   Close window or press Ctrl+C to exit")
+            logger.success("Acquisition complete!")
 
 
 if __name__ == "__main__":
@@ -190,12 +186,18 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 
+    # Configure logging
+    logger.remove()
+    log_level = "DEBUG" if args.debug else "INFO"
+    logger.add(sys.stderr, level=log_level)
+    logger.info(f"Logging configured at level: {log_level}")
+
     # Auto-generate filename if not specified
     if not args.output:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         args.output = f"/tmp/data_{timestamp}.hdf5"
 
-    print(f"Output file: {args.output}")
+    logger.info(f"Output file: {args.output}")
 
     # Create and run the streamer
     streamer = StreamExample(
