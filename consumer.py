@@ -4,8 +4,9 @@ import time
 import numpy as np
 import os
 
+
 class Consumer:
-    def __init__(self, buffer_size, data_queue, empty_queue, data_buffers,file_name):
+    def __init__(self, buffer_size, data_queue, empty_queue, data_buffers, file_name):
         self.buffer_size = buffer_size
         self.data_queue = data_queue
         self.empty_queue = empty_queue
@@ -22,7 +23,7 @@ class Consumer:
 
         self.empty_con_queue_count = 0
 
-    def set_metadata(self,cmaxSamples,timeIntervalns,chARange,maxADC):
+    def set_metadata(self, cmaxSamples, timeIntervalns, chARange, maxADC):
         self.cmaxSamples = cmaxSamples
         self.timeIntervalns = timeIntervalns
         self.chARange = chARange
@@ -30,27 +31,33 @@ class Consumer:
 
     def stop(self):
         self.running = False
-    
+
     def consume(self):
         total_save_length = 0
         metadata = {
-            'cmaxSamples': 2560,
-            'timeIntervalns': 80,
-            'chARange': self.chARange,
-            'maxADC': self.maxADC
+            "cmaxSamples": 2560,
+            "timeIntervalns": 80,
+            "chARange": self.chARange,
+            "maxADC": self.maxADC,
         }
-        
+
         # Force overwrite of existing file
         if os.path.exists(self.file_name):
             os.remove(self.file_name)
             print(f"Removed existing file: {self.file_name}")
-        
-        with h5py.File(self.file_name,'w') as f:
-            metadata_group = f.create_group('metadata')
+
+        with h5py.File(self.file_name, "w") as f:
+            metadata_group = f.create_group("metadata")
             for key, value in metadata.items():
                 metadata_group.attrs[key] = value
 
-            dset = f.create_dataset('adc_counts',(self.buffer_size,),maxshape=(None,),dtype='int16', chunks=(self.buffer_size,))
+            dset = f.create_dataset(
+                "adc_counts",
+                (self.buffer_size,),
+                maxshape=(None,),
+                dtype="int16",
+                chunks=(self.buffer_size,),
+            )
 
             while self.running:
                 if not self.running:
@@ -58,13 +65,16 @@ class Consumer:
                 try:
                     idx = self.data_queue.get(timeout=0.1)
 
-                    dset.resize((self.values_written+(len(self.data_buffers[idx])),))
-                    dset[self.values_written:] = self.data_buffers[idx]
+                    dset.resize((self.values_written + (len(self.data_buffers[idx])),))
+                    dset[self.values_written :] = self.data_buffers[idx]
                     self.empty_queue.put(idx)
 
                     self.values_written += len(self.data_buffers[idx])
 
                 except queue.Empty:
-                    self.empty_con_queue_count += 1   
+                    self.empty_con_queue_count += 1
 
-        print("Number of times consumer couldnt obtain queue: ", self.empty_con_queue_count)
+        print(
+            "Number of times consumer couldnt obtain queue: ",
+            self.empty_con_queue_count,
+        )
