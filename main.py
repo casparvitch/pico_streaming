@@ -64,15 +64,26 @@ class StreamExample():
 
     def signal_handler(self, sig, frame):
         print("Stopping data acquisition/saving")
+        
+        # 1. Signal everything to stop
         self.consumer.stop()
         self.pico_device.running = False
+        
+        # 2. Stop plotter timer and close window
+        if self.live_plotter:
+            self.live_plotter.timer.stop()  # Stop the update timer
+            self.live_plotter.close()       # Close the window
+        
+        # 3. Wait for threads to actually finish
+        if hasattr(self, 'consumer_thread'):
+            self.consumer_thread.join(timeout=2.0)
+        if hasattr(self, 'pico_thread'):
+            self.pico_thread.join(timeout=2.0)
+        
+        # 4. Now safe to close device
         self.pico_device.close_device()
         
-        # Close plotter if running
-        if self.live_plotter:
-            self.live_plotter.close()
-        
-        # Quit Qt application if we created it
+        # 5. Quit Qt
         if self.qt_app:
             self.qt_app.quit()
 
@@ -81,33 +92,31 @@ class StreamExample():
         self.consumer_thread.start()
         self.pico_thread.start()
         
-        # Show plotter if enabled
-        if self.live_plotter:
-            self.live_plotter.show()
-        
         # Handle Qt event loop if plotting is enabled
         if self.enable_live_plot and self.qt_app:
-            # Run Qt event loop in a separate thread to avoid blocking
+            # Show plotter window
+            self.live_plotter.show()
+            
+            # Run acquisition monitoring in background thread
             import threading
-            from PyQt5.QtCore import QTimer
             
-            def qt_event_loop():
-                # Process Qt events periodically
-                timer = QTimer()
-                timer.timeout.connect(lambda: None)  # Keep event loop alive
-                timer.start(100)  # 100ms intervals
-                self.qt_app.exec_()
+            def acquisition_monitor():
+                # Wait for acquisition to complete in background
+                self.consumer_thread.join()        
+                self.pico_thread.join()
+                # Signal Qt to quit when acquisition done
+                if self.qt_app:
+                    self.qt_app.quit()
             
-            qt_thread = threading.Thread(target=qt_event_loop, daemon=True)
-            qt_thread.start()
-        
-        # Wait for acquisition threads to complete
-        self.consumer_thread.join()        
-        self.pico_thread.join()
-        
-        # Clean shutdown of Qt if we created it
-        if self.qt_app:
-            self.qt_app.quit()
+            monitor_thread = threading.Thread(target=acquisition_monitor, daemon=True)
+            monitor_thread.start()
+            
+            # Run Qt event loop in main thread (blocking until quit)
+            self.qt_app.exec_()
+        else:
+            # Original behavior for non-plotting mode
+            self.consumer_thread.join()        
+            self.pico_thread.join()
 
 
 if __name__ == '__main__':
