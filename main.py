@@ -13,57 +13,79 @@ class StreamExample:
     def __init__(
         self, enable_live_plot=False, output_file="/tmp/data.hdf5", debug=False
     ):
+        # --- Configuration ---
+        self.output_file = output_file
+        self.debug = debug
+        self.enable_live_plot = enable_live_plot
+
+        # Consumer buffer settings (for writing to HDF5)
+        self.consumer_buffer_size = 7_500_000  # Samples per buffer
+        self.consumer_num_buffers = 5  # Number of buffers
+
+        # Picoscope hardware settings
+        self.pico_resolution = "PS5000A_DR_12BIT"
+        self.pico_channel_range = "PS5000A_20V"
+        self.pico_sample_interval_ns = 16
+        self.pico_sample_unit = "PS5000A_NS"
+
+        # Picoscope driver buffer settings (internal to the driver)
+        self.pico_driver_buffer_size = 640_000  # Samples
+        self.pico_driver_num_buffers = 1
+
+        # Streaming settings
+        self.pico_auto_stop = 0  # Don't auto stop
+        self.pico_auto_stop_stream = False
+        # --- End Configuration ---
 
         data_queue = queue.Queue()
         empty_queue = queue.Queue()
-        buffer_size = 7500000  # Approx 0.5s of data at 15MS/s
-        num_buffers = 5
         data_buffers = []
 
-        auto_stop = 0
-        auto_stop_stream = False
-
-        file_name = "data.npy"  # not in use
-
         # Creates an empty_queue that stores the indexes of empty buffers
-        # The buffers are created as empty buffers and all added to the empty
-        # queue ready to be filled with data by the producer
-        for idx in range(num_buffers):
-            data_buffers.append(np.empty((buffer_size,), dtype="int16"))
+        for idx in range(self.consumer_num_buffers):
+            data_buffers.append(np.empty((self.consumer_buffer_size,), dtype="int16"))
             empty_queue.put(idx)
 
         self.consumer = Consumer(
-            buffer_size, data_queue, empty_queue, data_buffers, output_file
+            self.consumer_buffer_size,
+            data_queue,
+            empty_queue,
+            data_buffers,
+            output_file,
         )
         self.pico_device = PicoDevice(
-            0,
-            "PS5000A_DR_12BIT",
-            640000,
-            1,
-            buffer_size,
+            0,  # handle
+            self.pico_resolution,
+            self.pico_driver_buffer_size,
+            self.pico_driver_num_buffers,
+            self.consumer_buffer_size,
             data_queue,
             empty_queue,
             data_buffers,
         )
 
         self.pico_device.set_channel(
-            "setChA", "PS5000A_CHANNEL_A", 1, "PS5000A_DC", "PS5000A_20V", 0.0
+            "setChA", "PS5000A_CHANNEL_A", 1, "PS5000A_DC", self.pico_channel_range, 0.0
         )
         self.pico_device.set_channel(
-            "setChB", "PS5000A_CHANNEL_B", 0, "PS5000A_DC", "PS5000A_20V", 0.0
+            "setChB", "PS5000A_CHANNEL_B", 0, "PS5000A_DC", self.pico_channel_range, 0.0
         )
         self.pico_device.set_data_buffer(
             "setDataBufferA", "PS5000A_CHANNEL_A", 0, "PS5000A_RATIO_MODE_NONE"
         )
         self.pico_device.configure_streaming_var(
-            16,
-            "PS5000A_NS",
-            0,
-            1,
+            self.pico_sample_interval_ns,
+            self.pico_sample_unit,
+            0,  # pre-trigger samples
+            1,  # down-sample ratio
             "PS5000A_RATIO_MODE_NONE",
-            auto_stop,
-            auto_stop_stream,
+            self.pico_auto_stop,
+            self.pico_auto_stop_stream,
         )
+
+        # Get metadata from configured device and pass to consumer
+        metadata = self.pico_device.get_metadata()
+        self.consumer.set_metadata(**metadata)
 
         self.consumer_thread = threading.Thread(target=self.consumer.consume)
         self.pico_thread = threading.Thread(target=self.pico_device.run_capture)

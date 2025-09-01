@@ -35,8 +35,8 @@ class Consumer:
     def consume(self):
         total_save_length = 0
         metadata = {
-            "cmaxSamples": 2560,
-            "timeIntervalns": 80,
+            "cmaxSamples": self.cmaxSamples,
+            "timeIntervalns": self.timeIntervalns,
             "chARange": self.chARange,
             "maxADC": self.maxADC,
         }

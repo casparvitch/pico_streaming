@@ -39,6 +39,7 @@ class PicoDevice:
         ####### Misc variables #######
         self.callbackFuncPtr = ps.StreamingReadyType(self.streaming_callback)
         self.channel_range = None
+        self.max_adc = ctypes.c_int16()
         self.running = True
         ####### Callback Function Variables #######
 
@@ -74,6 +75,9 @@ class PicoDevice:
         ####### Open device conneciton #######
         self.status["openunit"] = ps.ps5000aOpenUnit(
             ctypes.byref(self.handle), None, res
+        )
+        self.status["maximumValue"] = ps.ps5000aMaximumValue(
+            self.handle, ctypes.byref(self.max_adc)
         )
 
     def set_channel(self, status_Name, chan, en, coup, range, offset):
@@ -117,6 +121,15 @@ class PicoDevice:
         self.down_sample_ratio = down_samp_rat
         self.auto_stop = auto_stop
         self.auto_stop_stream = auto_stop_stream
+
+    def get_metadata(self):
+        """Returns a dictionary of acquisition parameters for the HDF5 file."""
+        return {
+            "cmaxSamples": self.total_samples,
+            "timeIntervalns": self.sample_int.value,
+            "chARange": self.channel_range,
+            "maxADC": self.max_adc.value,
+        }
 
     def run_streaming(self):
         self.status["runStreaming"] = ps.ps5000aRunStreaming(
@@ -196,29 +209,9 @@ class PicoDevice:
                             self.empty_pro_queue_count += 1
                             # print("\nempty_queue is empty")
 
-    def plot_data(self):
-        maxADC = ctypes.c_int16()
-        self.status["maximumValue"] = ps.ps5000aMaximumValue(
-            self.handle, ctypes.byref(maxADC)
-        )
-
-        adc2mVChAMax = adc2mV(self.bufferCompA, self.channel_range, maxADC)
-        print("Channel_range: ", self.channel_range)
-        timedata = np.linspace(
-            0, ((self.total_samples - 1) * self.sample_int.value), self.total_samples
-        )
-
-        plot.plot(timedata, adc2mVChAMax[:])
-        plot.xlabel("Time (ns)")
-        plot.ylabel("Voltage (mV)")
-        plot.show()
-
     def run_capture(self):
-        start = time.time()
         self.run_streaming()
         while self.running:
-            if (time.time() - start) >= 10:
-                self.running = False
             calledBack = False
             self.status["getStreamingLastestValues"] = (
                 ps.ps5000aGetStreamingLatestValues(
@@ -227,8 +220,6 @@ class PicoDevice:
             )
             if not calledBack:
                 pass
-        end = time.time()
-        print(end - start)
         print(
             "Number of times producer couldnt obtain queue: ",
             self.empty_pro_queue_count,
