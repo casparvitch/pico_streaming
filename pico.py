@@ -43,7 +43,6 @@ class PicoDevice:
         self.comp_buffer_size = comp_buffer_size
 
         ####### Temporary writing buffer variables #######
-        # self.bufferCompA = np.zeros(shape=(self.total_samples), dtype=np.int16)
         self.bufferA = np.zeros(shape=self.pico_buffer_size, dtype=np.int16)
 
         ####### Misc variables #######

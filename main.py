@@ -102,7 +102,7 @@ class StreamExample:
         if self.enable_live_plot:
             # Import Qt components only when needed
             from PyQt5.QtWidgets import QApplication
-            from hdf5_live_plotter import HDF5LivePlotter
+            from dfplot import HDF5LivePlotter
 
             # Create Qt application if it doesn't exist
             if not QApplication.instance():

@@ -66,8 +66,6 @@ class Consumer:
             )
 
             while self.running:
-                if not self.running:
-                    break
                 try:
                     idx = self.data_queue.get(timeout=0.1)
 
