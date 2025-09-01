@@ -309,21 +309,18 @@ class HDF5LivePlotter(QMainWindow):
         return decimated
 
     def create_time_axis(self, n_samples):
-        """Create time axis in seconds - show relative time for oscilloscope view"""
-        # Time per sample in seconds
+        """Create a scrolling time axis in seconds for the oscilloscope view."""
         time_per_sample = self.sample_interval_ns * 1e-9
 
-        # For decimated data, we need to account for the decimation
-        # Each pair of decimated points represents 'decimation_factor' original samples
-        effective_time_per_point = time_per_sample * (self.decimation_factor / 2)
+        # Calculate the absolute start and end time of the current display window
+        start_time = self.data_start_sample * time_per_sample
+        end_time = (self.data_start_sample + len(self.display_data)) * time_per_sample
 
-        # For oscilloscope-style display, show relative time (0 to window_duration)
-        # This gives a stable, sliding window view
-        window_duration = len(self.display_data) * time_per_sample
-        time_axis = np.linspace(0, window_duration, n_samples)
+        # Create a time axis that spans this window for the decimated data points
+        time_axis = np.linspace(start_time, end_time, n_samples)
 
         self.logger.debug(
-            f"Time axis: 0s to {window_duration:.3f}s, "
+            f"Time axis: {start_time:.3f}s to {end_time:.3f}s, "
             f"samples={n_samples}, "
             f"display_buffer_size={len(self.display_data):,}"
         )

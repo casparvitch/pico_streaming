@@ -16,7 +16,7 @@ class StreamExample:
 
         data_queue = queue.Queue()
         empty_queue = queue.Queue()
-        buffer_size = 51200000
+        buffer_size = 7500000  # Approx 0.5s of data at 15MS/s
         num_buffers = 5
         data_buffers = []
 
