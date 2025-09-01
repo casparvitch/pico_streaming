@@ -2,6 +2,7 @@ import queue
 import signal
 import threading
 import numpy as np
+import sys
 
 from consumer import Consumer
 from pico import PicoDevice
@@ -9,7 +10,12 @@ from pico import PicoDevice
 
 class StreamExample():
 
-    def __init__(self):
+    def __init__(self, enable_live_plot=False):
+
+
+class StreamExample():
+
+    def __init__(self, enable_live_plot=False):
 
         data_queue = queue.Queue()
         empty_queue = queue.Queue()
@@ -43,21 +49,81 @@ class StreamExample():
         self.pico_thread = threading.Thread(target=self.pico_device.run_capture)
 
         signal.signal(signal.SIGINT, self.signal_handler)
+        
+        # Optional live plotting
+        self.enable_live_plot = enable_live_plot
+        self.live_plotter = None
+        self.qt_app = None
+        
+        if self.enable_live_plot:
+            # Import Qt components only when needed
+            from PyQt5.QtWidgets import QApplication
+            from hdf5_live_plotter import HDF5LivePlotter
+            
+            # Create Qt application if it doesn't exist
+            if not QApplication.instance():
+                self.qt_app = QApplication(sys.argv)
+            
+            # Create the live plotter
+            self.live_plotter = HDF5LivePlotter('/tmp/data.hdf5')
 
     def signal_handler(self, sig, frame):
         print("Stopping data acquisition/saving")
         self.consumer.stop()
         self.pico_device.running = False
         self.pico_device.close_device()
+        
+        # Close plotter if running
+        if self.live_plotter:
+            self.live_plotter.close()
+        
+        # Quit Qt application if we created it
+        if self.qt_app:
+            self.qt_app.quit()
 
     def run(self):
+        # Start acquisition threads
         self.consumer_thread.start()
         self.pico_thread.start()
+        
+        # Show plotter if enabled
+        if self.live_plotter:
+            self.live_plotter.show()
+        
+        # Handle Qt event loop if plotting is enabled
+        if self.enable_live_plot and self.qt_app:
+            # Run Qt event loop in a separate thread to avoid blocking
+            import threading
+            from PyQt5.QtCore import QTimer
+            
+            def qt_event_loop():
+                # Process Qt events periodically
+                timer = QTimer()
+                timer.timeout.connect(lambda: None)  # Keep event loop alive
+                timer.start(100)  # 100ms intervals
+                self.qt_app.exec_()
+            
+            qt_thread = threading.Thread(target=qt_event_loop, daemon=True)
+            qt_thread.start()
+        
+        # Wait for acquisition threads to complete
         self.consumer_thread.join()        
         self.pico_thread.join()
+        
+        # Clean shutdown of Qt if we created it
+        if self.qt_app:
+            self.qt_app.quit()
 
 
 if __name__ == '__main__':
-
-    streamer = StreamExample()
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='PicoScope Data Acquisition')
+    parser.add_argument('--plot', action='store_true', 
+                       help='Enable live plotting (requires PyQt5 and pyqtgraph)')
+    args = parser.parse_args()
+    
+    # Create and run the streamer
+    streamer = StreamExample(enable_live_plot=args.plot)
     streamer.run()
