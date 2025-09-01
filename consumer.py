@@ -53,7 +53,7 @@ class Consumer:
 
             dset = f.create_dataset(
                 "adc_counts",
-                (self.buffer_size,),
+                (0,),
                 maxshape=(None,),
                 dtype="int16",
                 chunks=(self.buffer_size,),

@@ -52,12 +52,6 @@ class StreamExample:
         self.pico_device.set_channel(
             "setChB", "PS5000A_CHANNEL_B", 0, "PS5000A_DC", "PS5000A_20V", 0.0
         )
-        self.pico_device.set_channel(
-            "setChC", "PS5000A_CHANNEL_C", 0, "PS5000A_DC", "PS5000A_20V", 0.0
-        )
-        self.pico_device.set_channel(
-            "setChD", "PS5000A_CHANNEL_D", 0, "PS5000A_DC", "PS5000A_20V", 0.0
-        )
         self.pico_device.set_data_buffer(
             "setDataBufferA", "PS5000A_CHANNEL_A", 0, "PS5000A_RATIO_MODE_NONE"
         )
