@@ -60,13 +60,13 @@ class StreamExample:
         )
 
         self.pico_device.set_channel(
-            "setChA", "PS5000A_CHANNEL_A", 1, "PS5000A_DC", self.pico_channel_range, 0.0
+            "PS5000A_CHANNEL_A", 1, "PS5000A_DC", self.pico_channel_range, 0.0
         )
         self.pico_device.set_channel(
-            "setChB", "PS5000A_CHANNEL_B", 0, "PS5000A_DC", self.pico_channel_range, 0.0
+            "PS5000A_CHANNEL_B", 0, "PS5000A_DC", self.pico_channel_range, 0.0
         )
         self.pico_device.set_data_buffer(
-            "setDataBufferA", "PS5000A_CHANNEL_A", 0, "PS5000A_RATIO_MODE_NONE"
+            "PS5000A_CHANNEL_A", 0, "PS5000A_RATIO_MODE_NONE"
         )
         self.pico_device.configure_streaming_var(
             self.pico_sample_interval_ns,
@@ -109,7 +109,7 @@ class StreamExample:
                 self.qt_app = QApplication(sys.argv)
 
             # Create the live plotter
-            self.live_plotter = HDF5LivePlotter(output_file, debug=debug)
+            self.live_plotter = HDF5LivePlotter(output_file)
 
     def signal_handler(self, sig, frame):
         logger.warning("Ctrl+C detected. Shutting down.")

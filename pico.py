@@ -90,7 +90,7 @@ class PicoDevice:
     def stop(self):
         self.running = False
 
-    def set_channel(self, status_Name, chan, en, coup, range, offset):
+    def set_channel(self, chan, en, coup, range, offset):
         channel_range = ps.PS5000A_RANGE[range]
         self.channel_range = channel_range
         channel = ps.PS5000A_CHANNEL[chan]
@@ -101,7 +101,7 @@ class PicoDevice:
         check_status(status, f"ps5000aSetChannel ({chan})")
         logger.debug(f"Set channel {chan}: status {status}")
 
-    def set_data_buffer(self, status_Name, chan, segment, rat):
+    def set_data_buffer(self, chan, segment, rat):
         channel = ps.PS5000A_CHANNEL[chan]
         ratio = ps.PS5000A_RATIO_MODE[rat]
         status = ps.ps5000aSetDataBuffers(
@@ -161,14 +161,14 @@ class PicoDevice:
     # this function is called each time data is avaible from the picoscope, from here the data in the buffer should be accessed
     def streaming_callback(
         self,
-        handle,
+        _handle,
         noOfSamples,
         startIndex,
-        overflow,
-        triggerAt,
-        triggered,
-        autoStop,
-        param,
+        _overflow,
+        _triggerAt,
+        _triggered,
+        _autoStop,
+        _param,
     ):
 
         if self.running:
@@ -196,7 +196,7 @@ class PicoDevice:
                             self.buf_used = 0
                         except queue.Empty:
                             self.empty_pro_queue_count += 1
-                            logger.warning(
+                            logger.error(
                                 "Producer queue is empty. Data will be dropped until a buffer is available."
                             )
                             # Break the inner loop; we can't process more data without a buffer.
