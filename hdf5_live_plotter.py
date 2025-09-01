@@ -126,16 +126,24 @@ class HDF5LivePlotter(QMainWindow):
     
     def update_from_file(self):
         """Periodically read new data from HDF5 file"""
+        self.update_count += 1
+        
         try:
+            self.logger.debug(f"Update {self.update_count}: Checking file {self.hdf5_path}")
+            
             with h5py.File(self.hdf5_path, 'r') as f:
                 if 'adc_counts' not in f:
+                    self.logger.debug(f"Update {self.update_count}: No adc_counts dataset yet")
                     return
                 
                 dataset = f['adc_counts']
                 current_size = dataset.shape[0]
                 
+                self.logger.debug(f"Update {self.update_count}: File size={current_size:,}, last_pos={self.last_read_position:,}")
+                
                 # Check if new data is available
                 if current_size <= self.last_read_position:
+                    self.logger.debug(f"Update {self.update_count}: No new data available")
                     return
                 
                 # Read metadata if not already done
@@ -144,7 +152,11 @@ class HDF5LivePlotter(QMainWindow):
                 
                 # Read new data
                 new_data = dataset[self.last_read_position:current_size]
+                new_samples = len(new_data)
                 self.last_read_position = current_size
+                self.file_read_count += 1
+                
+                self.logger.debug(f"Update {self.update_count}: Read {new_samples:,} new samples")
                 
                 # Update display
                 self.update_display(new_data)
@@ -156,17 +168,23 @@ class HDF5LivePlotter(QMainWindow):
                     self.start_time = time.time()
                 rate_ms = (current_size / elapsed_time / 1_000_000) if elapsed_time > 0 and current_size > 0 else 0
                 self.rate_label.setText(f'Rate: {rate_ms:.1f} MS/s')
-                self.status_label.setText('Status: Live streaming')
+                self.status_label.setText(f'Status: Live streaming (Updates: {self.file_read_count})')
                 
-        except (FileNotFoundError, OSError):
-            self.status_label.setText(f'Status: File not found - {self.hdf5_path}')
+        except (FileNotFoundError, OSError) as e:
+            self.logger.debug(f"Update {self.update_count}: File not found - {e}")
+            self.status_label.setText(f'Status: Waiting for {self.hdf5_path}')
         except Exception as e:
+            self.logger.error(f"Update {self.update_count}: Error reading file - {e}")
             self.status_label.setText(f'Status: Error reading file - {str(e)}')
     
     def update_display(self, new_data):
         """Update the oscilloscope display with new data"""
         if len(new_data) == 0:
+            self.logger.debug("update_display: No new data to display")
             return
+        
+        # Track where we are in the file for time axis calculation
+        old_display_len = len(self.display_data)
         
         # Append new data to display buffer
         self.display_data = np.concatenate([self.display_data, new_data])
@@ -175,6 +193,14 @@ class HDF5LivePlotter(QMainWindow):
         if len(self.display_data) > self.display_window_samples:
             excess = len(self.display_data) - self.display_window_samples
             self.display_data = self.display_data[excess:]
+            self.data_start_sample += excess  # Track where our window starts in the file
+        
+        self.display_update_count += 1
+        
+        self.logger.debug(f"Display update {self.display_update_count}: "
+                         f"Added {len(new_data):,} samples, "
+                         f"buffer now {len(self.display_data):,} samples, "
+                         f"window starts at sample {self.data_start_sample:,}")
         
         # Apply decimation for display
         decimated_data = self.min_max_decimate(self.display_data, self.decimation_factor)
@@ -188,14 +214,18 @@ class HDF5LivePlotter(QMainWindow):
         else:
             voltage_data = decimated_data.astype(float)
         
-        # Create time axis
+        # Create time axis - this should update as we slide through the data
         time_axis = self.create_time_axis(len(voltage_data))
+        
+        self.logger.debug(f"Display update {self.display_update_count}: "
+                         f"Decimated to {len(voltage_data):,} points, "
+                         f"time range: {time_axis[0]:.3f}s to {time_axis[-1]:.3f}s")
         
         # Update plot
         self.curve.setData(time_axis, voltage_data)
         
         # Auto-scale occasionally
-        if len(self.display_data) % 1000 == 0:
+        if self.display_update_count % 10 == 0:
             self.plot_widget.autoRange()
     
     def min_max_decimate(self, data, factor):
@@ -239,7 +269,18 @@ class HDF5LivePlotter(QMainWindow):
         # Each pair of decimated points represents 'decimation_factor' original samples
         effective_time_per_point = time_per_sample * (self.decimation_factor / 2)
         
-        return np.arange(n_samples) * effective_time_per_point
+        # Calculate the start time based on where our display window starts in the file
+        start_time = self.data_start_sample * time_per_sample
+        
+        # Create time axis that reflects the actual position in the data stream
+        time_axis = start_time + np.arange(n_samples) * effective_time_per_point
+        
+        self.logger.debug(f"Time axis: start={start_time:.3f}s, "
+                         f"end={time_axis[-1]:.3f}s, "
+                         f"samples={n_samples}, "
+                         f"data_start_sample={self.data_start_sample}")
+        
+        return time_axis
     
     def closeEvent(self, event):
         """Clean shutdown"""

@@ -117,6 +117,12 @@ class StreamExample():
             # Original behavior for non-plotting mode
             self.consumer_thread.join()        
             self.pico_thread.join()
+        
+        # Notify user of completion
+        print("🎯 Acquisition complete!")
+        if self.enable_live_plot:
+            print("📊 Plot window remains open for data examination")
+            print("   Close window or press Ctrl+C to exit")
 
 
 if __name__ == '__main__':

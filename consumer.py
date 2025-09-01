@@ -2,6 +2,7 @@ import queue
 import h5py
 import time
 import numpy as np
+import os
 
 class Consumer:
     def __init__(self, buffer_size, data_queue, empty_queue, data_buffers,file_name):
@@ -38,6 +39,12 @@ class Consumer:
             'chARange': self.chARange,
             'maxADC': self.maxADC
         }
+        
+        # Force overwrite of existing file
+        if os.path.exists(self.file_name):
+            os.remove(self.file_name)
+            print(f"Removed existing file: {self.file_name}")
+        
         with h5py.File(self.file_name,'w') as f:
             metadata_group = f.create_group('metadata')
             for key, value in metadata.items():
