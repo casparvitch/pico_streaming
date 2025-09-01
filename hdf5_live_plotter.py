@@ -132,7 +132,11 @@ class HDF5LivePlotter(QMainWindow):
                 
                 # Update status
                 self.samples_label.setText(f'Samples: {current_size:,}')
-                rate_ms = current_size / (time.time() * 1000) if current_size > 0 else 0
+                elapsed_time = time.time() - getattr(self, 'start_time', time.time())
+                if not hasattr(self, 'start_time'):
+                    self.start_time = time.time()
+                rate_ms = (current_size / elapsed_time / 1_000_000) if elapsed_time > 0 and current_size > 0 else 0
+                self.rate_label.setText(f'Rate: {rate_ms:.1f} MS/s')
                 self.status_label.setText('Status: Live streaming')
                 
         except (FileNotFoundError, OSError):
