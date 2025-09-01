@@ -230,9 +230,12 @@ class HDF5LivePlotter(QMainWindow):
         # Update plot
         self.curve.setData(time_axis, voltage_data)
 
-        # Auto-scale occasionally
+        # Manually set the X-axis range to follow the data, creating a scroll effect.
+        self.plot_widget.setXRange(time_axis[0], time_axis[-1], padding=0)
+
+        # Auto-scale the Y-axis occasionally.
         if self.display_update_count % 10 == 1:
-            self.plot_widget.autoRange()
+            self.plot_widget.enableAutoRange(axis='y')
 
     def min_max_decimate(self, data, factor):
         """
