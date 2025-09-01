@@ -12,11 +12,6 @@ class StreamExample():
 
     def __init__(self, enable_live_plot=False):
 
-
-class StreamExample():
-
-    def __init__(self, enable_live_plot=False):
-
         data_queue = queue.Queue()
         empty_queue = queue.Queue()
         buffer_size = 51200000  
