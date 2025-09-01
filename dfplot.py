@@ -259,41 +259,16 @@ class HDF5LivePlotter(QMainWindow):
         return decimated
 
     def create_time_axis(self, n_samples):
-        """Create a scrolling time axis in seconds for the min-max decimated data."""
+        """
+        Create a simplified, linearly spaced time axis for the display window.
+        This is an approximation but is much simpler than calculating exact times
+        for min-max decimated points.
+        """
         time_per_sample = self.sample_interval_ns * 1e-9
-        factor = self.decimation_factor
-        n_original_samples = len(self.display_data)
-
-        # If data is not long enough to be decimated, create a simple linear time axis
-        if n_original_samples < factor:
-            start_time = self.data_start_sample * time_per_sample
-            end_time = (self.data_start_sample + n_original_samples) * time_per_sample
-            return np.linspace(start_time, end_time, n_samples)
-
-        n_complete_groups = n_original_samples // factor
-
-        # Create time points for the start and end of each decimated group
-        group_start_indices = np.arange(n_complete_groups) * factor
-        group_end_indices = group_start_indices + factor - 1
-
-        # Interleave start and end times to match min/max points
-        decimated_indices = np.empty(n_complete_groups * 2, dtype=int)
-        decimated_indices[0::2] = group_start_indices
-        decimated_indices[1::2] = group_end_indices
-
-        # Convert indices to absolute time
-        time_axis_decimated = (self.data_start_sample + decimated_indices) * time_per_sample
-
-        # Handle remainder samples if any
-        remainder_len = n_original_samples % factor
-        if remainder_len > 0:
-            remainder_indices = np.arange(n_complete_groups * factor, n_original_samples)
-            remainder_times = (self.data_start_sample + remainder_indices) * time_per_sample
-            time_axis = np.concatenate([time_axis_decimated, remainder_times])
-        else:
-            time_axis = time_axis_decimated
-
-        return time_axis
+        start_time = self.data_start_sample * time_per_sample
+        # The end time is based on the original number of samples in the window
+        end_time = (self.data_start_sample + len(self.display_data)) * time_per_sample
+        return np.linspace(start_time, end_time, n_samples)
 
     def closeEvent(self, event):
         """Clean shutdown"""
