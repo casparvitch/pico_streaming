@@ -2,6 +2,7 @@ import sys
 import time
 import numpy as np
 import h5py
+import logging
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QHBoxLayout
 from PyQt5.QtCore import QTimer, pyqtSignal, QObject
 import pyqtgraph as pg
@@ -15,7 +16,7 @@ class HDF5LivePlotter(QMainWindow):
     Completely independent of acquisition system for zero-risk operation.
     """
     
-    def __init__(self, hdf5_path='/tmp/data.hdf5', update_interval_ms=200):
+    def __init__(self, hdf5_path='/tmp/data.hdf5', update_interval_ms=200, debug=False):
         super().__init__()
         
         # Configuration
@@ -24,15 +25,31 @@ class HDF5LivePlotter(QMainWindow):
         self.last_read_position = 0
         self.display_window_samples = 15_000_000  # 1 second at 15MS/s
         self.decimation_factor = 150  # 15M -> 100k display points
+        self.debug = debug
+        
+        # Setup logging
+        if self.debug:
+            logging.basicConfig(level=logging.DEBUG, 
+                              format='%(asctime)s - %(levelname)s - %(message)s')
+            self.logger = logging.getLogger(__name__)
+        else:
+            self.logger = logging.getLogger(__name__)
+            self.logger.setLevel(logging.WARNING)
         
         # Data storage
         self.display_data = np.array([])
         self.time_data = np.array([])
+        self.data_start_sample = 0  # Track where our display window starts in the file
         
         # Metadata from HDF5
         self.sample_interval_ns = 16  # Default, will be read from file
         self.ch_range = None
         self.max_adc = None
+        
+        # Debug counters
+        self.update_count = 0
+        self.file_read_count = 0
+        self.display_update_count = 0
         
         # Setup UI
         self.setup_ui()
@@ -41,6 +58,8 @@ class HDF5LivePlotter(QMainWindow):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_from_file)
         self.timer.start(self.update_interval_ms)
+        
+        self.logger.info(f"HDF5LivePlotter initialized: path={hdf5_path}, interval={update_interval_ms}ms")
         
         # Initial file check
         self.check_file_exists()
