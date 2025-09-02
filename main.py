@@ -270,3 +270,28 @@ if __name__ == "__main__":
         decimation_factor=args.dec_fac,
     )
     streamer.run()
+
+    # --- Verification Step ---
+    logger.info(f"Verifying output file: {args.output}")
+    try:
+        import h5py
+
+        expected_samples = streamer.consumer.values_written
+        if expected_samples == 0:
+            logger.warning("Consumer processed no samples. Nothing to verify.")
+        else:
+            with h5py.File(args.output, "r") as f:
+                if "adc_counts" not in f:
+                    raise ValueError("Dataset 'adc_counts' not found in HDF5 file.")
+
+                actual_samples = len(f["adc_counts"])
+                if actual_samples == expected_samples:
+                    logger.success(
+                        f"Verification PASSED: File contains {actual_samples} samples, as expected."
+                    )
+                else:
+                    logger.error(
+                        f"Verification FAILED: Expected {expected_samples} samples, but file has {actual_samples}."
+                    )
+    except Exception as e:
+        logger.error(f"HDF5 file verification failed: {e}")
