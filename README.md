@@ -1,197 +1,128 @@
 # PicoScope High-Speed Data Acquisition with Live Plotting
 
-Real-time 15MS/s data acquisition from PicoScope with optional oscilloscope-style visualization using HDF5-based plotting for zero-risk operation.
+A high-performance, multi-threaded application for streaming data from a PicoScope to an HDF5 file, with an optional, decoupled live visualization.
 
 ## Features
 
-- **High-Speed Acquisition**: 15MS/s streaming from PicoScope to HDF5
-- **Zero-Risk Architecture**: Plotting completely independent of acquisition system
-- **Real-Time Visualization**: Oscilloscope-style display with min-max decimation
-- **Robust Buffer Management**: 5 buffers of 51.2M samples for smooth data flow
-- **Optional Plotting**: Run with or without visualization as needed
-
-## Quick Start
-
-### Installation
-
-```bash
-pip install -r requirements.txt
-```
-
-### Basic Usage
-
-**Acquisition Only** (proven 15MS/s performance):
-```bash
-python main.py
-```
-
-**Acquisition + Live Plotting**:
-```bash
-python main.py --plot
-```
-
-**View Existing Data**:
-```bash
-python hdf5_live_plotter.py /path/to/data.hdf5
-```
+- **High-Speed Streaming**: Captures data at the maximum rate supported by the hardware (e.g., 62.5 MS/s on a PicoScope 5000a series at 12-bit resolution). The rate is configurable.
+- **Robust Producer-Consumer Architecture**: Separates data acquisition from disk I/O using a large, shared memory buffer pool to prevent data loss.
+- **Zero-Risk Live Plotting**: The plotter reads from the HDF5 file, not the live data stream. This ensures that a slow or crashing GUI cannot interfere with data acquisition.
+- **Efficient Visualization**: Uses `pyqtgraph` and a Numba-accelerated min-max decimation algorithm to display large datasets with minimal CPU impact.
+- **Graceful Shutdown**: Captures `Ctrl+C` to cleanly stop all threads, flush data to disk, and close the device.
 
 ## System Architecture
 
 ```
-PicoScope → pico.py → buffers → consumer.py → /tmp/data.hdf5
-                                                    ↓
-                                            hdf5_live_plotter.py → Real-time Display
+PicoScope → pico.py (Producer) → Data Buffers → consumer.py (Consumer) → /tmp/data.hdf5
+                                                                              ↓
+                                                                      dfplot.py (Plotter) → Real-time Display
 ```
 
 ### Core Components
 
-- **`pico.py`**: PicoScope hardware interface and data acquisition
-- **`consumer.py`**: High-speed buffer-to-HDF5 writer
-- **`main.py`**: Orchestrates acquisition threads with optional plotting
-- **`hdf5_live_plotter.py`**: Independent HDF5-based oscilloscope visualization
+- **`main.py`**: Orchestrates the producer, consumer, and plotter threads. Handles command-line arguments and shutdown.
+- **`pico.py`**: The "producer" thread. Interfaces with the PicoScope hardware via the C SDK and places data into shared buffers.
+- **`consumer.py`**: The "consumer" thread. Retrieves full data buffers and writes them efficiently to an HDF5 file.
+- **`dfplot.py`**: A `PyQt5` application for live visualization. Can be run as part of the main application or as a standalone viewer for existing HDF5 files.
+- **`conversion_utils.py`**: Numba-accelerated helper functions for data conversion and decimation.
 
-## Performance Specifications
+## Installation
 
-### Acquisition System
-- **Sample Rate**: 15MS/s (16ns intervals)
-- **Buffer Size**: 51.2M samples per buffer
-- **Number of Buffers**: 5 (256M samples total)
-- **Data Latency**: 3.4 seconds (buffer size ÷ sample rate)
-- **Output Format**: HDF5 with metadata
+1.  **Python Dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-### Visualization System
-- **Update Rate**: 5Hz (200ms intervals)
-- **Display Points**: ~100k after min-max decimation
-- **Decimation Ratio**: 150:1 (preserves transients)
-- **Display Window**: 1 second of recent data
-- **CPU Overhead**: <5% additional load
+2.  **PicoSDK Setup**:
+    You must install the official PicoSDK from Pico Technology. On Linux, you may need to perform additional steps. The following command was required on one system to fix a library issue:
+    ```bash
+    # This command may be needed if you encounter library loading errors.
+    # It modifies the executable stack permissions of a PicoSDK library.
+    sudo execstack -c /opt/picoscope/lib/libpicocv.so
+    ```
+    For more information, see these resources:
+    - [PicoTech Forum Thread on Linux issues](https://www.picotech.com/support/viewtopic.php?t=43125&hilit=linux)
+    - [Arch Linux PicoScope Package](https://aur.archlinux.org/packages/picoscope7)
 
-## Configuration
+## Usage
 
-### Hardware Setup
-The system is configured for:
-- **Channel A**: Enabled, 20V range, DC coupling
-- **Channels B,C,D**: Disabled
-- **Resolution**: 12-bit
-- **Trigger**: Free-running (no trigger)
+The application is controlled via command-line arguments to `main.py`.
 
-### File Output
-- **Default Path**: `/tmp/data.hdf5`
-- **Format**: HDF5 with datasets:
-  - `adc_counts`: Raw ADC values (int16)
-  - `metadata`: Acquisition parameters
+### Basic Commands
 
-### Plotting Parameters
-- **Update Interval**: 200ms (configurable)
-- **Decimation Factor**: 150 (configurable)
-- **Display Window**: 15M samples (1 second at 15MS/s)
-
-## Advanced Usage
-
-### Standalone Plotting
-View any existing HDF5 data file:
+**Acquisition without live plotting:**
 ```bash
-python hdf5_live_plotter.py /path/to/your/data.hdf5
+python main.py -o my_data.hdf5
 ```
 
-### Custom Configuration
-Modify parameters in the source files:
-
-**Acquisition (main.py)**:
-```python
-buffer_size = 51200000      # Samples per buffer
-num_buffers = 5             # Number of buffers
+**Acquisition with live plotting:**
+```bash
+python main.py --plot -o my_data.hdf5
 ```
 
-**Plotting (hdf5_live_plotter.py)**:
-```python
-update_interval_ms = 200    # Refresh rate
-decimation_factor = 150     # Data reduction ratio
-display_window_samples = 15_000_000  # Visible timespan
+**View an existing data file:**
+```bash
+python dfplot.py /path/to/your/data.hdf5
 ```
+
+### Command-Line Arguments
+
+-   `--rate` / `-r`: Sample rate in MS/s. Default: `62.5`. Use `0` for the maximum possible rate.
+-   `--plot` / `-p`: Enable the live plot window.
+-   `--output` / `-o`: Path to the output HDF5 file. Default: `/tmp/data_YYYYMMDD_HHMMSS.hdf5`.
+-   `--plot-window` / `-w`: The time duration (in seconds) to display in the plot window. Default: `0.5`.
+-   `--dec-fac` / `-d`: The decimation factor for plotting, which controls how many points are grouped for min/max calculation. Higher values reduce plot density. Default: `150`.
+-   `--verbose` / `-v`: Enable detailed `DEBUG` level logging.
 
 ## Data Analysis
 
+The output HDF5 file contains the raw ADC counts and metadata attributes needed for conversion.
+
 ### HDF5 File Structure
+
+-   **Dataset**: `adc_counts` (1D array of `int16`) - The raw sample values from the ADC.
+-   **Attributes**: Attached to the root of the file. Key attributes include:
+    -   `sample_interval_ns`: The time between samples in nanoseconds.
+    -   `voltage_range_v`: The configured single-sided voltage range (e.g., `20.0` for ±20V).
+    -   `max_adc`: The maximum integer value of the ADC (e.g., `32767`).
+
+### Example Python Analysis
+
 ```python
 import h5py
-with h5py.File('/tmp/data.hdf5', 'r') as f:
-    data = f['adc_counts'][:]           # Raw ADC counts
-    metadata = f['metadata'].attrs      # Acquisition parameters
-    
-    # Convert to voltage
-    from picosdk.functions import adc2mV
-    voltage = adc2mV(data, metadata['chARange'], metadata['maxADC'])
-```
+import numpy as np
+from conversion_utils import adc_to_mV
 
-### Min-Max Decimation Algorithm
-The plotter uses min-max decimation to preserve transient information:
-- Groups samples into blocks of `decimation_factor` size
-- Keeps both minimum and maximum from each block
-- Interleaves min/max values to preserve peak information
-- Reduces 15M samples to ~100k display points
+# Open the HDF5 file
+with h5py.File('my_data.hdf5', 'r') as f:
+    # Load data and metadata
+    adc_counts = f['adc_counts'][:]
+    voltage_range = f.attrs['voltage_range_v']
+    max_adc_val = f.attrs['max_adc']
+
+    # Convert raw ADC counts to millivolts
+    voltage_mv = adc_to_mV(adc_counts, voltage_range, max_adc_val)
+    
+    print(f"Successfully loaded {len(voltage_mv)} samples.")
+    print(f"Voltage range: {voltage_mv.min():.2f} mV to {voltage_mv.max():.2f} mV")
+```
 
 ## Troubleshooting
 
-### Common Issues
-
-**"File not found" errors**:
-- Ensure acquisition is running and creating `/tmp/data.hdf5`
-- Check file permissions in `/tmp/` directory
-
-**Plotting window not appearing**:
-- Verify PyQt5 and pyqtgraph installation: `pip install PyQt5 pyqtgraph`
-- Check X11 forwarding if using SSH: `ssh -X username@host`
-
-**Performance issues**:
-- Disable plotting for maximum acquisition performance: `python main.py`
-- Monitor CPU usage and adjust decimation factor if needed
-
-### Performance Monitoring
-The system reports key metrics:
-- Buffer queue status (producer/consumer balance)
-- Maximum samples per callback
-- File write performance
-- Plotting update rates
-
-## Development
-
-### Adding New Features
-The modular architecture makes it easy to add:
-- **Event Detection**: Analyze HDF5 data for triggers/events
-- **Multiple Channels**: Extend plotting for channels B,C,D
-- **Data Export**: Add CSV/MATLAB export functionality
-- **Remote Monitoring**: Network-based plotting clients
-
-### Testing
-Test individual components:
-```bash
-# Test acquisition only
-python main.py
-
-# Test plotting with existing data
-python hdf5_live_plotter.py /tmp/data.hdf5
-
-# Test full system
-python main.py --plot
-```
+-   **"File not found" errors (plotter)**: Ensure the acquisition script (`main.py`) is running and has created the HDF5 file before the plotter tries to read it.
+-   **Plotting window not appearing**: Verify `PyQt5` and `pyqtgraph` are installed. If using SSH, ensure X11 forwarding is enabled (`ssh -X user@host`).
+-   **Performance Issues**: If the system is struggling, run acquisition without the `--plot` flag. You can also increase the plotting decimation factor (`--dec-fac`) to reduce the GUI workload.
 
 ## Dependencies
 
-- `numpy`: Numerical computing
-- `h5py`: HDF5 file I/O
-- `picosdk`: PicoScope hardware interface
-- `pyqtgraph`: High-performance plotting
-- `PyQt5`: GUI framework
-- `matplotlib`: Additional plotting support
+-   `numpy`: Numerical computing
+-   `h5py`: HDF5 file I/O
+-   `picosdk`: Official PicoScope Python SDK
+-   `pyqtgraph`: High-performance plotting
+-   `PyQt5`: GUI framework
+-   `loguru`: Clean and simple logging
+-   `numba`: JIT compiler for performance-critical functions
 
 ## License
 
 This project interfaces with PicoScope hardware using the official PicoSDK. Ensure you have appropriate licenses for PicoScope software and hardware.
-
-## Support
-
-For issues related to:
-- **PicoScope Hardware**: Contact Pico Technology support
-- **Data Acquisition**: Check buffer sizes and sample rates
-- **Visualization**: Verify Qt/graphics system compatibility
