@@ -77,9 +77,7 @@ class PicoDevice:
         self.comp_buffer_size: int = comp_buffer_size
 
         # --- Internal Data Buffer (receives data from SDK) ---
-        self.bufferA: np.ndarray = np.zeros(
-            shape=self.pico_buffer_size, dtype=np.int16
-        )
+        self.bufferA: np.ndarray = np.zeros(shape=self.pico_buffer_size, dtype=np.int16)
 
         # --- Ctypes and Callback ---
         self.callbackFuncPtr = ps.StreamingReadyType(self.streaming_callback)
@@ -142,11 +140,20 @@ class PicoDevice:
 
         # Store the actual voltage range for metadata and conversion
         range_to_voltage = {
-            "PS5000A_10MV": 0.01, "PS5000A_20MV": 0.02, "PS5000A_50MV": 0.05,
-            "PS5000A_100MV": 0.1, "PS5000A_200MV": 0.2, "PS5000A_500MV": 0.5,
-            "PS5000A_1V": 1.0, "PS5000A_2V": 2.0, "PS5000A_5V": 5.0,
-            "PS5000A_10V": 10.0, "PS5000A_20V": 20.0, "PS5000A_50V": 50.0,
-            "PS5000A_100V": 100.0, "PS5000A_200V": 200.0,
+            "PS5000A_10MV": 0.01,
+            "PS5000A_20MV": 0.02,
+            "PS5000A_50MV": 0.05,
+            "PS5000A_100MV": 0.1,
+            "PS5000A_200MV": 0.2,
+            "PS5000A_500MV": 0.5,
+            "PS5000A_1V": 1.0,
+            "PS5000A_2V": 2.0,
+            "PS5000A_5V": 5.0,
+            "PS5000A_10V": 10.0,
+            "PS5000A_20V": 20.0,
+            "PS5000A_50V": 50.0,
+            "PS5000A_100V": 100.0,
+            "PS5000A_200V": 200.0,
         }
         self.voltage_range_v = range_to_voltage.get(range)
 

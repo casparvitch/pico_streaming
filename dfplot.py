@@ -312,9 +312,7 @@ class HDF5LivePlotter(QMainWindow):
                         configured_rate_sps = 1e9 / self.sample_interval_ns
                         rate_ratio = actual_rate_sps / configured_rate_sps
 
-                        configured_rate_str = self._format_rate_sps(
-                            configured_rate_sps
-                        )
+                        configured_rate_str = self._format_rate_sps(configured_rate_sps)
                         actual_rate_str = self._format_rate_sps(actual_rate_sps)
 
                         rate_text = f"Rate: {actual_rate_str} / {configured_rate_str}"
