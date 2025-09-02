@@ -63,6 +63,10 @@ class HDF5LivePlotter(QMainWindow):
         self.display_latency_ms = 0.0
         self.last_data_timestamp = None
 
+        # Rate checking
+        self.rate_check_start_time = None
+        self.rate_check_start_samples = 0
+
         # Data freshness tracking
         self.last_displayed_size = 0
         self.data_change_count = 0
@@ -206,6 +210,11 @@ class HDF5LivePlotter(QMainWindow):
                 if current_size == 0:
                     return
 
+                # Start the rate check timer on the first data point
+                if self.rate_check_start_time is None and current_size > 0:
+                    self.rate_check_start_time = time.time()
+                    self.rate_check_start_samples = current_size
+
                 # Read metadata if not already done
                 if self.voltage_range_v is None:
                     self.read_metadata(f)
@@ -277,6 +286,23 @@ class HDF5LivePlotter(QMainWindow):
                 self.error_label.setText(
                     f'<span style="color: {error_color}">Errors: {total_errors}</span>'
                 )
+
+                # Check and update acquisition rate status
+                if self.rate_check_start_time:
+                    elapsed_time = time.time() - self.rate_check_start_time
+                    if elapsed_time > 1.0:  # Check only after 1s for stability
+                        samples_acquired = current_size - self.rate_check_start_samples
+                        actual_rate = samples_acquired / elapsed_time
+                        configured_rate = 1e9 / self.sample_interval_ns
+                        rate_ratio = actual_rate / configured_rate
+
+                        rate_text = f"Rate: {1e3 / self.sample_interval_ns:.1f} MS/s"
+                        if rate_ratio < 0.95:
+                            self.rate_label.setText(
+                                f'<span style="color: red">{rate_text} (LOW!)</span>'
+                            )
+                        else:
+                            self.rate_label.setText(rate_text)
 
         except (FileNotFoundError, OSError):
             self.acq_status_label.setText(
