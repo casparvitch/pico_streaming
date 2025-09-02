@@ -229,8 +229,8 @@ class PicoDevice:
         self.run_streaming()
         while not self.shutdown_event.is_set():
             ps.ps5000aGetStreamingLatestValues(self.handle, self.callbackFuncPtr, None)
-            # Give the CPU a break, crucial for preventing a busy-wait loop
-            time.sleep(0.0)
+            # Yield the CPU to other threads without a long pause
+            time.sleep(0)
 
         logger.info(
             f"Producer couldn't obtain an empty queue {self.empty_pro_queue_count} times."
