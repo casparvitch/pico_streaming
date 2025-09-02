@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QTimer, pyqtSignal, QObject
 import pyqtgraph as pg
-from conversion_utils import adc_to_mV
+from conversion_utils import adc_to_mV, min_max_decimate_numba
 
 
 class HDF5LivePlotter(QMainWindow):
@@ -23,7 +23,7 @@ class HDF5LivePlotter(QMainWindow):
     Completely independent of acquisition system for zero-risk operation.
     """
 
-    def __init__(self, hdf5_path="/tmp/data.hdf5", update_interval_ms=200):
+    def __init__(self, hdf5_path="/tmp/data.hdf5", update_interval_ms=50):
         super().__init__()
 
         # Configuration
@@ -54,6 +54,12 @@ class HDF5LivePlotter(QMainWindow):
         self.data_rate_mb_s = 0.0
         self.display_latency_ms = 0.0
         self.last_data_timestamp = None
+        
+        # Data freshness tracking
+        self.last_displayed_size = 0
+        self.data_change_count = 0
+        self.stale_update_count = 0
+        self.last_freshness_check = time.time()
         
         # Error tracking
         self.conversion_error_count = 0
@@ -184,8 +190,22 @@ class HDF5LivePlotter(QMainWindow):
                     self.last_file_size = current_file_size
                     self.last_rate_time = current_time
 
-                # Store timestamp for latency calculation
-                self.last_data_timestamp = current_time
+                # Track data freshness and changes
+                if current_size > self.last_displayed_size:
+                    self.data_change_count += 1
+                    self.last_displayed_size = current_size
+                    self.last_data_timestamp = current_time
+                else:
+                    self.stale_update_count += 1
+                    # Log if we're frequently updating with no new data
+                    if self.stale_update_count % 10 == 0:
+                        logger.debug(f"Plot update #{self.update_count} with no new data (stale updates: {self.stale_update_count})")
+
+                # Check data staleness
+                if self.last_data_timestamp:
+                    data_age_ms = (current_time - self.last_data_timestamp) * 1000
+                    if data_age_ms > 500:  # Data older than 500ms
+                        logger.warning(f"Displaying stale data: {data_age_ms:.0f}ms old")
 
                 # Read only the most recent data window
                 data_window = dataset[start_index:current_size]
@@ -246,8 +266,8 @@ class HDF5LivePlotter(QMainWindow):
             f"starting at sample {self.data_start_sample:,}"
         )
 
-        # Apply decimation for display
-        decimated_data = self.min_max_decimate(
+        # Apply Numba-optimized decimation for display
+        decimated_data = min_max_decimate_numba(
             self.display_data, self.decimation_factor
         )
 
@@ -295,37 +315,6 @@ class HDF5LivePlotter(QMainWindow):
         if self.display_update_count % 10 == 1:
             self.plot_widget.enableAutoRange(axis='y')
 
-    def min_max_decimate(self, data, factor):
-        """
-        Min-max decimation to preserve transients while reducing data points.
-        For each group of 'factor' samples, keep both min and max values.
-        """
-        if len(data) < factor:
-            return data
-
-        # Reshape data into groups
-        n_complete_groups = len(data) // factor
-        if n_complete_groups == 0:
-            return data
-
-        # Take only complete groups
-        grouped_data = data[: n_complete_groups * factor].reshape(-1, factor)
-
-        # Get min and max for each group
-        mins = np.min(grouped_data, axis=1)
-        maxs = np.max(grouped_data, axis=1)
-
-        # Interleave mins and maxs to preserve transients
-        decimated = np.empty(n_complete_groups * 2, dtype=data.dtype)
-        decimated[0::2] = mins
-        decimated[1::2] = maxs
-
-        # Add any remaining samples
-        remainder = data[n_complete_groups * factor :]
-        if len(remainder) > 0:
-            decimated = np.concatenate([decimated, remainder])
-
-        return decimated
 
     def format_sample_count(self, count):
         """Format large sample counts with appropriate units"""
