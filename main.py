@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import queue
 import signal
 import threading
@@ -6,22 +8,29 @@ import numpy as np
 import sys
 from loguru import logger
 import h5py
+from typing import List, Optional
 
 from consumer import Consumer
 from pico import PicoDevice
 
 
 class StreamExample:
+    """Orchestrates the Picoscope data acquisition process.
+
+    This class initializes the Picoscope device (producer), the HDF5 writer
+    (consumer), and the live plotter. It manages the threads, queues, and
+    graceful shutdown of the entire application.
+    """
 
     def __init__(
         self,
-        sample_rate_msps=62.5,
-        enable_live_plot=False,
-        output_file="/tmp/data.hdf5",
-        debug=False,
-        plot_window_s=0.5,
-        decimation_factor=150,
-    ):
+        sample_rate_msps: float = 62.5,
+        enable_live_plot: bool = False,
+        output_file: str = "/tmp/data.hdf5",
+        debug: bool = False,
+        plot_window_s: float = 0.5,
+        decimation_factor: int = 150,
+    ) -> None:
         # --- Configuration ---
         self.output_file = output_file
         self.debug = debug
@@ -50,17 +59,20 @@ class StreamExample:
         self.pico_auto_stop_stream = False
         # --- End Configuration ---
 
-        self.shutdown_event = threading.Event()
-        data_queue = queue.Queue()
-        empty_queue = queue.Queue()
-        data_buffers = []
+        # --- System Components ---
+        self.shutdown_event: threading.Event = threading.Event()
+        data_queue: queue.Queue[int] = queue.Queue()
+        empty_queue: queue.Queue[int] = queue.Queue()
+        data_buffers: List[np.ndarray] = []
 
-        # Creates an empty_queue that stores the indexes of empty buffers
+        # Pre-allocate a pool of numpy arrays for data transfer and populate the
+        # empty_queue with their indices.
         for idx in range(self.consumer_num_buffers):
             data_buffers.append(np.empty((self.consumer_buffer_size,), dtype="int16"))
             empty_queue.put(idx)
 
-        self.pico_device = PicoDevice(
+        # --- Producer ---
+        self.pico_device: PicoDevice = PicoDevice(
             0,  # handle
             self.pico_resolution,
             self.pico_driver_buffer_size,
@@ -94,9 +106,10 @@ class StreamExample:
         # Run streaming once to get the actual sample interval from the driver
         self.pico_device.run_streaming()
 
+        # --- Consumer ---
         # Get metadata from configured device and pass to consumer
         metadata = self.pico_device.get_metadata()
-        self.consumer = Consumer(
+        self.consumer: Consumer = Consumer(
             self.consumer_buffer_size,
             data_queue,
             empty_queue,
@@ -106,16 +119,21 @@ class StreamExample:
             metadata=metadata,
         )
 
-        self.consumer_thread = threading.Thread(target=self.consumer.consume)
-        self.pico_thread = threading.Thread(target=self.pico_device.run_capture)
+        # --- Threads ---
+        self.consumer_thread: threading.Thread = threading.Thread(
+            target=self.consumer.consume
+        )
+        self.pico_thread: threading.Thread = threading.Thread(
+            target=self.pico_device.run_capture
+        )
 
+        # --- Signal Handling ---
         signal.signal(signal.SIGINT, self.signal_handler)
 
-        # Optional live plotting
-        self.enable_live_plot = enable_live_plot
-        self.live_plotter = None
-        self.qt_app = None
-        self.start_time = None
+        # --- Live Plotting (optional) ---
+        self.live_plotter: Optional["HDF5LivePlotter"] = None
+        self.qt_app: Optional["QApplication"] = None
+        self.start_time: Optional[float] = None
 
         if self.enable_live_plot:
             # Import Qt components only when needed
@@ -133,11 +151,17 @@ class StreamExample:
                 decimation_factor=decimation_factor,
             )
 
-    def signal_handler(self, sig, frame):
+    def signal_handler(self, sig: int, frame: Optional[object]) -> None:
+        """Handles Ctrl+C interrupts to initiate a graceful shutdown."""
         logger.warning("Ctrl+C detected. Shutting down.")
         self.shutdown()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
+        """Performs a graceful shutdown of all components.
+
+        This method calculates final statistics, stops all threads, closes the
+        plotter, and ensures the Picoscope device is properly closed.
+        """
         if self.shutdown_event.is_set():
             return
 
@@ -203,7 +227,8 @@ class StreamExample:
 
         logger.success("Shutdown complete.")
 
-    def run(self):
+    def run(self) -> None:
+        """Starts the acquisition threads and, if enabled, the Qt event loop."""
         # Start acquisition threads
         self.start_time = time.time()
         self.consumer_thread.start()
@@ -225,6 +250,9 @@ class StreamExample:
 
 
 if __name__ == "__main__":
+    # This block runs when the script is executed directly.
+    # It handles command-line argument parsing, logging setup, and
+    # instantiates and runs the main StreamExample class.
     import argparse
     from datetime import datetime
 
