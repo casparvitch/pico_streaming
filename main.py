@@ -33,7 +33,11 @@ class StreamExample:
         # Picoscope hardware settings
         self.pico_resolution = "PS5000A_DR_12BIT"
         self.pico_channel_range = "PS5000A_20V"
-        self.pico_sample_interval_ns = int(1000 / sample_rate_msps)
+        if sample_rate_msps <= 0:
+            # A value of 0 requests the fastest possible rate
+            self.pico_sample_interval_ns = 0
+        else:
+            self.pico_sample_interval_ns = int(1000 / sample_rate_msps)
         self.pico_sample_unit = "PS5000A_NS"
 
         # Picoscope driver buffer settings (internal to the driver)
@@ -230,7 +234,7 @@ if __name__ == "__main__":
         "-r",
         type=float,
         default=62.5,
-        help="Sample rate in MS/s (e.g., 20 for 20MS/s).",
+        help="Sample rate in MS/s (e.g., 20 for 20MS/s). Use 0 or -1 for max rate.",
     )
     parser.add_argument(
         "--plot",
