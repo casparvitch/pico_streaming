@@ -128,7 +128,7 @@ class HDF5LivePlotter(QMainWindow):
         # Add separators between status items
         status_layout.addWidget(self.heartbeat_label)
         status_layout.addWidget(QLabel(" | "))
-        status_layout.addWidget(self.error_label)
+        status_layout.addWidget(self.acq_status_label)
         status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.samples_label)
         status_layout.addWidget(QLabel(" | "))
@@ -136,7 +136,7 @@ class HDF5LivePlotter(QMainWindow):
         status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.plotter_latency_label)
         status_layout.addWidget(QLabel(" | "))
-        status_layout.addWidget(self.acq_status_label)
+        status_layout.addWidget(self.error_label)
         status_layout.addStretch()
         layout.addLayout(status_layout)
 

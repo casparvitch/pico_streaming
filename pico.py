@@ -65,6 +65,7 @@ class PicoDevice:
         self.buf_free = self.comp_buffer_size
 
         ####### Streaming Variables #######
+        self.streaming_configured = False
         self.sample_int = None
         self.sample_unit = None
         self.ratio = None
@@ -179,7 +180,8 @@ class PicoDevice:
             self.pico_buffer_size,
         )
         check_status(status, "ps5000aRunStreaming")
-        logger.debug(f"Run streaming: status {status}")
+        self.streaming_configured = True
+        logger.info(f"Streaming configured. Actual sample interval: {self.sample_int.value} ns")
 
     # this function is called each time data is avaible from the picoscope, from here the data in the buffer should be accessed
     def streaming_callback(
@@ -230,7 +232,8 @@ class PicoDevice:
                             break
 
     def run_capture(self):
-        self.run_streaming()
+        if not self.streaming_configured:
+            self.run_streaming()
         while not self.shutdown_event.is_set():
             ps.ps5000aGetStreamingLatestValues(self.handle, self.callbackFuncPtr, None)
             # Yield the CPU to other threads without a long pause

@@ -84,6 +84,9 @@ class StreamExample:
             self.pico_auto_stop_stream,
         )
 
+        # Run streaming once to get the actual sample interval from the driver
+        self.pico_device.run_streaming()
+
         # Get metadata from configured device and pass to consumer
         metadata = self.pico_device.get_metadata()
         self.consumer = Consumer(
