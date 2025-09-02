@@ -99,6 +99,7 @@ class PicoDevice:
         )
         check_status(status, f"ps5000aSetChannel ({chan})")
         logger.debug(f"Set channel {chan}: status {status}")
+        logger.debug(f"Range '{range}' maps to enum value: {ps.PS5000A_RANGE[range]}")  
 
     def set_data_buffer(self, chan, segment, rat):
         channel = ps.PS5000A_CHANNEL[chan]
