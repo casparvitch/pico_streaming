@@ -23,13 +23,13 @@ class HDF5LivePlotter(QMainWindow):
     Completely independent of acquisition system for zero-risk operation.
     """
 
-    def __init__(self, hdf5_path="/tmp/data.hdf5", update_interval_ms=50):
+    def __init__(self, hdf5_path="/tmp/data.hdf5", update_interval_ms=50, display_window_seconds=0.5):
         super().__init__()
 
         # Configuration
         self.hdf5_path = hdf5_path
         self.update_interval_ms = update_interval_ms
-        self.display_window_samples = 30_000_000  # ~0.5 seconds at 62.5MS/s
+        self.display_window_seconds = display_window_seconds
         self.decimation_factor = 150  # 15M -> 100k display points
 
         # UI Heartbeat
@@ -180,8 +180,11 @@ class HDF5LivePlotter(QMainWindow):
                 if self.voltage_range_v is None:
                     self.read_metadata(f)
 
+                # Dynamically calculate the number of samples for the display window
+                display_window_samples = int(self.display_window_seconds / (self.sample_interval_ns * 1e-9))
+
                 # Calculate where to start reading to get the last window
-                start_index = max(0, current_size - self.display_window_samples)
+                start_index = max(0, current_size - display_window_samples)
                 self.data_start_sample = start_index
 
                 # Track data freshness and changes

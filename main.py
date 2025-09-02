@@ -12,7 +12,7 @@ from pico import PicoDevice
 class StreamExample:
 
     def __init__(
-        self, enable_live_plot=False, output_file="/tmp/data.hdf5", debug=False
+        self, enable_live_plot=False, output_file="/tmp/data.hdf5", debug=False, plot_window_s=0.5
     ):
         # --- Configuration ---
         self.output_file = output_file
@@ -111,7 +111,7 @@ class StreamExample:
                 self.qt_app = QApplication(sys.argv)
 
             # Create the live plotter
-            self.live_plotter = HDF5LivePlotter(output_file)
+            self.live_plotter = HDF5LivePlotter(output_file, display_window_seconds=plot_window_s)
 
     def signal_handler(self, sig, frame):
         logger.warning("Ctrl+C detected. Shutting down.")
@@ -185,6 +185,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output", "-o", help="Output HDF5 file (default: auto-timestamped in /tmp/)"
     )
+    parser.add_argument(
+        "--plot-window",
+        type=float,
+        default=0.5,
+        help="Set the live plot display window duration in seconds.",
+    )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
     args = parser.parse_args()
 
@@ -203,6 +209,9 @@ if __name__ == "__main__":
 
     # Create and run the streamer
     streamer = StreamExample(
-        enable_live_plot=args.plot, output_file=args.output, debug=args.debug
+        enable_live_plot=args.plot,
+        output_file=args.output,
+        debug=args.debug,
+        plot_window_s=args.plot_window,
     )
     streamer.run()
