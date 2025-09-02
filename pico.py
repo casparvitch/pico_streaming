@@ -245,8 +245,8 @@ class PicoDevice:
                             self.shutdown_event.set()
                             # Break the inner loop; we can't process more data without a buffer.
                             break
-            duration_ms = (time.perf_counter() - callback_start_time) * 1000
-            self.callback_durations.append(duration_ms)
+                duration_ms = (time.perf_counter() - callback_start_time) * 1000
+                self.callback_durations.append(duration_ms)
 
     def run_capture(self):
         if not self.streaming_configured:
