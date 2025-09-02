@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
 )
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import QTimer, pyqtSignal, QObject
+from PyQt5.QtCore import QTimer, pyqtSignal, QObject, Qt
 import pyqtgraph as pg
 from conversion_utils import adc_to_mV, min_max_decimate_numba
 
@@ -415,6 +415,13 @@ class HDF5LivePlotter(QMainWindow):
         self.timer.stop()
         event.accept()
 
+    def keyPressEvent(self, event): 
+        """Handle key presses."""   
+        if event.key() == Qt.Key_Q:  
+            logger.info("'Q' key pressed. Closing application.")   
+            self.close()          
+        else:             
+            super().keyPressEvent(event) 
 
 def main():
     """Standalone application entry point"""

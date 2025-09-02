@@ -12,7 +12,12 @@ from pico import PicoDevice
 class StreamExample:
 
     def __init__(
-        self, enable_live_plot=False, output_file="/tmp/data.hdf5", debug=False, plot_window_s=0.5
+        self,
+        enable_live_plot=False,
+        output_file="/tmp/data.hdf5",
+        debug=False,
+        plot_window_s=0.5,
+        decimation_factor=150,
     ):
         # --- Configuration ---
         self.output_file = output_file
@@ -30,7 +35,7 @@ class StreamExample:
         self.pico_sample_unit = "PS5000A_NS"
 
         # Picoscope driver buffer settings (internal to the driver)
-        self.pico_driver_buffer_size = 640_000  # Samples
+        self.pico_driver_buffer_size = 6_400_000   # Samples
         self.pico_driver_num_buffers = 1
 
         # Streaming settings
@@ -111,7 +116,11 @@ class StreamExample:
                 self.qt_app = QApplication(sys.argv)
 
             # Create the live plotter
-            self.live_plotter = HDF5LivePlotter(output_file, display_window_seconds=plot_window_s)
+            self.live_plotter = HDF5LivePlotter(
+                output_file,
+                display_window_seconds=plot_window_s,
+                decimation_factor=decimation_factor,
+            )
 
     def signal_handler(self, sig, frame):
         logger.warning("Ctrl+C detected. Shutting down.")
@@ -179,6 +188,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PicoScope Data Acquisition")
     parser.add_argument(
         "--plot",
+        "-p",
         action="store_true",
         help="Enable live plotting (requires PyQt5 and pyqtgraph)",
     )
@@ -187,16 +197,22 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--plot-window",
+        "-w",
         type=float,
         default=0.5,
         help="Set the live plot display window duration in seconds.",
     )
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable debug logging"
+    )
+    parser.add_argument(
+        "--dec-fac", "-d", type=int, default=150, help="Decimation factor for plotting"
+    )
     args = parser.parse_args()
 
     # Configure logging
     logger.remove()
-    log_level = "DEBUG" if args.debug else "INFO"
+    log_level = "DEBUG" if args.verbose else "INFO"
     logger.add(sys.stderr, level=log_level)
     logger.info(f"Logging configured at level: {log_level}")
 
@@ -211,7 +227,8 @@ if __name__ == "__main__":
     streamer = StreamExample(
         enable_live_plot=args.plot,
         output_file=args.output,
-        debug=args.debug,
+        debug=args.verbose,
         plot_window_s=args.plot_window,
+        decimation_factor=args.dec_fac,
     )
     streamer.run()
