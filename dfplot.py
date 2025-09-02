@@ -200,7 +200,7 @@ class HDF5LivePlotter(QMainWindow):
             # Update rate label with configured sample rate
             configured_rate_sps = 1e9 / self.sample_interval_ns
             self.rate_label.setText(
-                f"Rate: ... / {self._format_rate_sps(configured_rate_sps)}"
+                f"Rate: ... : {self._format_rate_sps(configured_rate_sps)}"
             )
         except KeyError:
             logger.debug("Metadata not fully available yet. Will retry.")
@@ -288,7 +288,7 @@ class HDF5LivePlotter(QMainWindow):
             configured_rate_str = self._format_rate_sps(configured_rate_sps)
             actual_rate_str = self._format_rate_sps(actual_rate_sps)
 
-            rate_text = f"Rate: {actual_rate_str} / {configured_rate_str}"
+            rate_text = f"Rate: {actual_rate_str} : {configured_rate_str}"
             if rate_ratio < 0.95:
                 self.rate_label.setText(
                     f'<span style="color: red">{rate_text}</span>'
