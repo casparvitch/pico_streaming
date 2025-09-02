@@ -172,7 +172,7 @@ class PicoDevice:
             "resolution": self.resolution,
             "sample_interval_ns": self.sample_int.value,
             "voltage_range_v": self.voltage_range_v,
-            "max_adc_value": self.max_adc.value,
+            "max_adc": self.max_adc.value,
             "channel_a_coupling": self.channel_a_coupling,
             "channel_a_range": self.channel_a_range_str,
         }
