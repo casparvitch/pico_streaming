@@ -103,7 +103,7 @@ class HDF5LivePlotter(QMainWindow):
         self.data_rate_label = QLabel("Data: 0 MB/s")
         self.latency_label = QLabel("Latency: 0 ms")
         self.error_label = QLabel("Errors: 0")
-        self.acq_status_label = QLabel("Acquisition: Starting...")
+        self.acq_status_label = QLabel('<span style="color: orange">Acquisition: Starting...</span>')
         
         # Add separators between status items
         status_layout.addWidget(self.heartbeat_label)
@@ -208,7 +208,7 @@ class HDF5LivePlotter(QMainWindow):
                     self.data_change_count += 1
                     self.last_displayed_size = current_size
                     self.last_data_timestamp = current_time
-                    self.acq_status_label.setText("Acquisition: Active")
+                    self.acq_status_label.setText('<span style="color: lightgreen">Acquisition: Active</span>')
 
                     # Read only the most recent data window
                     data_window = dataset[start_index:current_size]
@@ -224,16 +224,10 @@ class HDF5LivePlotter(QMainWindow):
                 else:
                     # NO NEW DATA - skip expensive plot update
                     self.stale_update_count += 1
-                    self.acq_status_label.setText("Acquisition: Acquiring...")
+                    self.acq_status_label.setText('<span style="color: orange">Acquisition: Acquiring...</span>')
                     # Log if we're frequently updating with no new data
                     if self.stale_update_count % 10 == 0:
                         logger.debug(f"File check #{self.update_count} with no new data (stale checks: {self.stale_update_count})")
-
-                    # Check data staleness
-                    if self.last_data_timestamp:
-                        data_age_ms = (current_time - self.last_data_timestamp) * 1000
-                        if data_age_ms > 500:  # Data older than 500ms
-                            logger.warning(f"Displaying stale data: {data_age_ms:.0f}ms old")
 
                 # Update status labels with abbreviations
                 samples_text = self.format_sample_count(current_size)
