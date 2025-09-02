@@ -334,8 +334,8 @@ class PicoDevice:
         # This loop polls the SDK for new data, which triggers the callback.
         while not self.shutdown_event.is_set():
             ps.ps5000aGetStreamingLatestValues(self.handle, self.callbackFuncPtr, None)
-            # Yield the GIL to other threads. time.sleep(0) is a common way to do this.
-            time.sleep(0.0)
+            # Yield the GIL to other threads.
+            time.sleep(0.001)
 
         # --- Shutdown and reporting ---
         logger.info(
