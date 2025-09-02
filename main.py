@@ -5,6 +5,7 @@ import time
 import numpy as np
 import sys
 from loguru import logger
+import h5py
 
 from consumer import Consumer
 from pico import PicoDevice
@@ -287,7 +288,6 @@ if __name__ == "__main__":
     # --- Verification Step ---
     logger.info(f"Verifying output file: {args.output}")
     try:
-        import h5py
 
         expected_samples = streamer.consumer.values_written
         if expected_samples == 0:
