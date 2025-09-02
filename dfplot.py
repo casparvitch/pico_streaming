@@ -29,8 +29,12 @@ class HDF5LivePlotter(QMainWindow):
         # Configuration
         self.hdf5_path = hdf5_path
         self.update_interval_ms = update_interval_ms
-        self.display_window_samples = 15_000_000  # 1 second at 15MS/s
+        self.display_window_samples = 30_000_000  # ~0.5 seconds at 62.5MS/s
         self.decimation_factor = 150  # 15M -> 100k display points
+
+        # UI Heartbeat
+        self.heartbeat_chars = ["|", "/", "-", "\\"]
+        self.heartbeat_index = 0
 
         # Data storage
         self.display_data = np.array([])
@@ -92,6 +96,7 @@ class HDF5LivePlotter(QMainWindow):
 
         # Status bar
         status_layout = QHBoxLayout()
+        self.heartbeat_label = QLabel("UI: -")
         self.status_label = QLabel("Status: Waiting for data...")
         self.samples_label = QLabel("Samples: 0")
         self.rate_label = QLabel("Rate: 0 MS/s")
@@ -101,6 +106,8 @@ class HDF5LivePlotter(QMainWindow):
         self.acq_status_label = QLabel("Acquisition: Starting...")
         
         # Add separators between status items
+        status_layout.addWidget(self.heartbeat_label)
+        status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.status_label)
         status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.samples_label)
@@ -160,6 +167,11 @@ class HDF5LivePlotter(QMainWindow):
     def update_from_file(self):
         """Periodically read the latest window of data from the HDF5 file."""
         self.update_count += 1
+
+        # Update UI heartbeat to show the UI thread is alive
+        self.heartbeat_index = (self.heartbeat_index + 1) % len(self.heartbeat_chars)
+        self.heartbeat_label.setText(f"UI: {self.heartbeat_chars[self.heartbeat_index]}")
+
         try:
             with h5py.File(self.hdf5_path, "r") as f:
                 if "adc_counts" not in f:
@@ -196,6 +208,7 @@ class HDF5LivePlotter(QMainWindow):
                     self.data_change_count += 1
                     self.last_displayed_size = current_size
                     self.last_data_timestamp = current_time
+                    self.acq_status_label.setText("Acquisition: Active")
 
                     # Read only the most recent data window
                     data_window = dataset[start_index:current_size]
@@ -207,10 +220,11 @@ class HDF5LivePlotter(QMainWindow):
 
                     # Update the display with this complete window (only when data changes)
                     self.update_display(data_window)
-                    
+
                 else:
                     # NO NEW DATA - skip expensive plot update
                     self.stale_update_count += 1
+                    self.acq_status_label.setText("Acquisition: Acquiring...")
                     # Log if we're frequently updating with no new data
                     if self.stale_update_count % 10 == 0:
                         logger.debug(f"File check #{self.update_count} with no new data (stale checks: {self.stale_update_count})")
@@ -246,7 +260,6 @@ class HDF5LivePlotter(QMainWindow):
                 self.error_label.setText(f'<span style="color: {error_color}">Errors: {total_errors}</span>')
                 
                 self.status_label.setText(f"Status: Live (R:{self.file_read_count})")
-                self.acq_status_label.setText("Acquisition: Active")
 
         except (FileNotFoundError, OSError):
             self.status_label.setText(f"Status: Waiting for file")
