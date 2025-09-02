@@ -1,17 +1,30 @@
+from __future__ import annotations
+
 import ctypes
 import time
-import matplotlib.pyplot as plot
 import numpy as np
 import queue
+import threading
+from typing import List, Dict, Any, Optional
+
 from loguru import logger
 
 from picosdk.ps5000a import ps5000a as ps
 from picosdk.functions import adc2mV, PICO_STATUS
 
 
-def check_status(status, function_name):
-    """Checks the status returned by the PicoSDK and raises an exception if it's not PICO_OK."""
+def check_status(status: int, function_name: str) -> None:
+    """Check the status returned by a Picoscope SDK call and raise on error.
+
+    Args:
+        status: The status code returned by the SDK function.
+        function_name: The name of the function that was called.
+
+    Raises:
+        Exception: If the status is not PICO_OK.
+    """
     if status != PICO_STATUS["PICO_OK"]:
+        # Find the string name of the error code
         error_name = next(
             (k for k, v in PICO_STATUS.items() if v == status), "PICO_UNKNOWN_ERROR"
         )
@@ -19,145 +32,180 @@ def check_status(status, function_name):
 
 
 class PicoDevice:
+    """A class to manage a Picoscope 5000a series device for data streaming.
+
+    This class handles device configuration, buffer management, and the data
+    capture loop. It acts as the "producer" in a producer-consumer pattern.
+    """
+
     def __init__(
         self,
-        handle,
-        resolution,
-        pico_buffer_size,
-        pico_num_buffers,
-        comp_buffer_size,
-        data_queue,
-        empty_queue,
-        data_buffers,
-        shutdown_event,
-    ):
-        ####### Setup variables #######
-        self.handle = ctypes.c_int16(handle)
-        self.resolution = resolution
-        res = ps.PS5000A_DEVICE_RESOLUTION[resolution]
+        handle: int,
+        resolution: str,
+        pico_buffer_size: int,
+        pico_num_buffers: int,
+        comp_buffer_size: int,
+        data_queue: queue.Queue[int],
+        empty_queue: queue.Queue[int],
+        data_buffers: List[np.ndarray],
+        shutdown_event: threading.Event,
+    ) -> None:
+        """Initializes the PicoDevice and opens a connection to the hardware.
 
-        ####### Local picoscope buffer variables #######
-        self.pico_buffer_size = pico_buffer_size
-        self.pico_num_buffers = pico_num_buffers
-        self.total_samples = self.pico_buffer_size * self.pico_num_buffers
+        Args:
+            handle: The device handle provided by the SDK.
+            resolution: The desired resolution, e.g., "PS5000A_DR_16BIT".
+            pico_buffer_size: The size of each buffer allocated within the SDK.
+            pico_num_buffers: The number of buffers for the SDK to use.
+            comp_buffer_size: The size of the application-side buffers for writing to disk.
+            data_queue: Queue to send indices of full buffers to the consumer.
+            empty_queue: Queue to receive indices of empty buffers from the consumer.
+            data_buffers: A list of pre-allocated numpy arrays for data transfer.
+            shutdown_event: A threading.Event to signal shutdown.
+        """
+        # --- Device and Resolution ---
+        self.handle: ctypes.c_int16 = ctypes.c_int16(handle)
+        self.resolution: str = resolution
+        res_enum = ps.PS5000A_DEVICE_RESOLUTION[resolution]
 
-        ####### File writing buffer variables #######
-        self.comp_buffer_size = comp_buffer_size
+        # --- Picoscope SDK Buffer Configuration ---
+        self.pico_buffer_size: int = pico_buffer_size
+        self.pico_num_buffers: int = pico_num_buffers
+        self.total_samples: int = self.pico_buffer_size * self.pico_num_buffers
 
-        ####### Temporary writing buffer variables #######
-        self.bufferA = np.zeros(shape=self.pico_buffer_size, dtype=np.int16)
+        # --- Application Buffer (for file writing) ---
+        self.comp_buffer_size: int = comp_buffer_size
 
-        ####### Misc variables #######
+        # --- Internal Data Buffer (receives data from SDK) ---
+        self.bufferA: np.ndarray = np.zeros(
+            shape=self.pico_buffer_size, dtype=np.int16
+        )
+
+        # --- Ctypes and Callback ---
         self.callbackFuncPtr = ps.StreamingReadyType(self.streaming_callback)
-        self.channel_range = None
-        self.max_adc = ctypes.c_int16()
-        self.shutdown_event = shutdown_event
+        self.max_adc: ctypes.c_int16 = ctypes.c_int16()
 
-        self.channel_a_coupling = None
-        self.channel_a_range_str = None
-        ####### Callback Function Variables #######
+        # --- Channel Configuration ---
+        self.channel_range: Optional[int] = None
+        self.voltage_range_v: Optional[float] = None
+        self.channel_a_coupling: Optional[str] = None
+        self.channel_a_range_str: Optional[str] = None
 
-        self.nextSample = 0
-        self.autoStopStream = False
+        # --- Threading and Queues ---
+        self.shutdown_event: threading.Event = shutdown_event
+        self.data_queue: queue.Queue[int] = data_queue
+        self.empty_queue: queue.Queue[int] = empty_queue
+        self.data_buffers: List[np.ndarray] = data_buffers
 
-        self.data_queue = data_queue
-        self.empty_queue = empty_queue
-        self.data_buffers = data_buffers
+        # --- Buffer Management State ---
+        self.buf_idx: int = self.empty_queue.get()
+        self.buf_used: int = 0
+        self.buf_free: int = self.comp_buffer_size
 
-        self.buf_idx = self.empty_queue.get()
-        self.buf_used = 0
-        self.buf_free = self.comp_buffer_size
+        # --- Streaming Configuration ---
+        self.streaming_configured: bool = False
+        self.sample_int: Optional[ctypes.c_int32] = None
+        self.sample_unit: Optional[int] = None
+        self.ratio: Optional[int] = None
+        self.pre_trig_samples: Optional[int] = None
+        self.down_sample_ratio: Optional[int] = None
+        self.auto_stop: Optional[int] = None
+        self.auto_stop_stream: Optional[int] = None
 
-        ####### Streaming Variables #######
-        self.streaming_configured = False
-        self.sample_int = None
-        self.sample_unit = None
-        self.ratio = None
-        self.pre_trig_samples = None
-        self.down_sample_ratio = None
-        self.auto_stop = None
-        self.auto_stop_stream = None
+        # --- Status and Performance Metrics ---
+        self.captured_samples: int = 0
+        self.empty_pro_queue_count: int = 0
+        self.overflow_count: int = 0
+        self.callback_durations: List[float] = []
 
-        ####### Status information #######
-        self.status = {}
-        self.captured_samples = 0
-        self.max_sample = 0
-        self.max_sample_point = 0
-        self.max_sample_count = 0
-        self.empty_pro_queue_count = 0
-        self.overflow_count = 0
-        self.callback_durations = []
-
-        ####### Open device conneciton #######
-        status = ps.ps5000aOpenUnit(ctypes.byref(self.handle), None, res)
+        # --- Open device connection ---
+        status = ps.ps5000aOpenUnit(ctypes.byref(self.handle), None, res_enum)
         check_status(status, "ps5000aOpenUnit")
 
         status = ps.ps5000aMaximumValue(self.handle, ctypes.byref(self.max_adc))
         check_status(status, "ps5000aMaximumValue")
 
-    def set_channel(self, chan, en, coup, range, offset):
-        channel_range = ps.PS5000A_RANGE[range]
-        self.channel_range = channel_range
+    def set_channel(
+        self, chan: str, en: int, coup: str, range: str, offset: float
+    ) -> None:
+        """Configure a channel on the Picoscope.
 
-        # Store the actual voltage range for conversion
+        Args:
+            chan: The channel identifier string, e.g., "PS5000A_CHANNEL_A".
+            en: Whether the channel is enabled (1) or disabled (0).
+            coup: The coupling type string, e.g., "PS5000A_DC".
+            range: The voltage range string, e.g., "PS5000A_20V".
+            offset: The analog voltage offset in Volts.
+        """
+        channel_range_enum = ps.PS5000A_RANGE[range]
+        self.channel_range = channel_range_enum
+
+        # Store the actual voltage range for metadata and conversion
         range_to_voltage = {
-            "PS5000A_10MV": 0.01,
-            "PS5000A_20MV": 0.02,
-            "PS5000A_50MV": 0.05,
-            "PS5000A_100MV": 0.1,
-            "PS5000A_200MV": 0.2,
-            "PS5000A_500MV": 0.5,
-            "PS5000A_1V": 1.0,
-            "PS5000A_2V": 2.0,
-            "PS5000A_5V": 5.0,
-            "PS5000A_10V": 10.0,
-            "PS5000A_20V": 20.0,
-            "PS5000A_50V": 50.0,
-            "PS5000A_100V": 100.0,
-            "PS5000A_200V": 200.0,
+            "PS5000A_10MV": 0.01, "PS5000A_20MV": 0.02, "PS5000A_50MV": 0.05,
+            "PS5000A_100MV": 0.1, "PS5000A_200MV": 0.2, "PS5000A_500MV": 0.5,
+            "PS5000A_1V": 1.0, "PS5000A_2V": 2.0, "PS5000A_5V": 5.0,
+            "PS5000A_10V": 10.0, "PS5000A_20V": 20.0, "PS5000A_50V": 50.0,
+            "PS5000A_100V": 100.0, "PS5000A_200V": 200.0,
         }
-        self.voltage_range_v = range_to_voltage.get(range, 20.0)  # Default to 20V
+        self.voltage_range_v = range_to_voltage.get(range)
 
         if chan == "PS5000A_CHANNEL_A" and en:
             self.channel_a_coupling = coup
             self.channel_a_range_str = range
 
-        channel = ps.PS5000A_CHANNEL[chan]
-        coupling = ps.PS5000A_COUPLING[coup]
+        channel_enum = ps.PS5000A_CHANNEL[chan]
+        coupling_enum = ps.PS5000A_COUPLING[coup]
         status = ps.ps5000aSetChannel(
-            self.handle, channel, en, coupling, channel_range, offset
+            self.handle, channel_enum, en, coupling_enum, channel_range_enum, offset
         )
         check_status(status, f"ps5000aSetChannel ({chan})")
-        logger.debug(f"Set channel {chan}: status {status}")
         logger.debug(
-            f"Range '{range}' maps to enum value: {ps.PS5000A_RANGE[range]}, voltage range: {self.voltage_range_v}V"
+            f"Range '{range}' maps to enum value: {channel_range_enum}, voltage range: {self.voltage_range_v}V"
         )
 
-    def set_data_buffer(self, chan, segment, rat):
-        channel = ps.PS5000A_CHANNEL[chan]
-        ratio = ps.PS5000A_RATIO_MODE[rat]
+    def set_data_buffer(self, chan: str, segment: int, rat: str) -> None:
+        """Set up the data buffer for a specific channel for streaming.
+
+        Args:
+            chan: The channel identifier string, e.g., "PS5000A_CHANNEL_A".
+            segment: The memory segment to use (0 for streaming).
+            rat: The ratio mode string, e.g., "PS5000A_RATIO_MODE_NONE".
+        """
+        channel_enum = ps.PS5000A_CHANNEL[chan]
+        ratio_enum = ps.PS5000A_RATIO_MODE[rat]
         status = ps.ps5000aSetDataBuffers(
             self.handle,
-            channel,
+            channel_enum,
             self.bufferA.ctypes.data_as(ctypes.POINTER(ctypes.c_int16)),
             None,
             self.pico_buffer_size,
             segment,
-            ratio,
+            ratio_enum,
         )
         check_status(status, f"ps5000aSetDataBuffers ({chan})")
-        logger.debug(f"Set data buffer for {chan}: status {status}")
 
     def configure_streaming_var(
         self,
-        samp_int,
-        samp_unit,
-        pre_trig_samp,
-        down_samp_rat,
-        rat,
-        auto_stop,
-        auto_stop_stream,
-    ):
+        samp_int: int,
+        samp_unit: str,
+        pre_trig_samp: int,
+        down_samp_rat: int,
+        rat: str,
+        auto_stop: int,
+        auto_stop_stream: int,
+    ) -> None:
+        """Store streaming parameters before starting the capture.
+
+        Args:
+            samp_int: The desired sample interval in `samp_unit` units.
+            samp_unit: The time unit string, e.g., "PS5000A_NS".
+            pre_trig_samp: The number of pre-trigger samples.
+            down_samp_rat: The downsampling ratio.
+            rat: The ratio mode string, e.g., "PS5000A_RATIO_MODE_NONE".
+            auto_stop: Whether to stop the capture automatically (1) or not (0).
+            auto_stop_stream: Deprecated, not used.
+        """
         self.sample_int = ctypes.c_int32(samp_int)
         self.sample_unit = ps.PS5000A_TIME_UNITS[samp_unit]
         self.ratio = ps.PS5000A_RATIO_MODE[rat]
@@ -166,18 +214,19 @@ class PicoDevice:
         self.auto_stop = auto_stop
         self.auto_stop_stream = auto_stop_stream
 
-    def get_metadata(self):
-        """Returns a dictionary of acquisition parameters for the HDF5 file."""
+    def get_metadata(self) -> Dict[str, Any]:
+        """Return a dictionary of acquisition parameters for the HDF5 file."""
         return {
             "resolution": self.resolution,
-            "sample_interval_ns": self.sample_int.value,
+            "sample_interval_ns": self.sample_int.value if self.sample_int else None,
             "voltage_range_v": self.voltage_range_v,
             "max_adc": self.max_adc.value,
             "channel_a_coupling": self.channel_a_coupling,
             "channel_a_range": self.channel_a_range_str,
         }
 
-    def run_streaming(self):
+    def run_streaming(self) -> None:
+        """Starts the Picoscope streaming capture."""
         status = ps.ps5000aRunStreaming(
             self.handle,
             ctypes.byref(self.sample_int),
@@ -195,67 +244,93 @@ class PicoDevice:
             f"Streaming configured. Actual sample interval: {self.sample_int.value} ns"
         )
 
-    # this function is called each time data is avaible from the picoscope, from here the data in the buffer should be accessed
     def streaming_callback(
         self,
-        _handle,
-        noOfSamples,
-        startIndex,
-        _overflow,
-        _triggerAt,
-        _triggered,
-        _autoStop,
-        _param,
-    ):
+        _handle: int,
+        noOfSamples: int,
+        startIndex: int,
+        _overflow: int,
+        _triggerAt: int,
+        _triggered: int,
+        _autoStop: int,
+        _param: int,
+    ) -> None:
+        """Callback function executed by the SDK when new streaming data is available.
+
+        This function is the heart of the producer. It copies data from the
+        Picoscope's internal buffer into the application's shared buffer pool.
+        When an application buffer is full, its index is placed on the data_queue
+        for the consumer.
+
+        Note: This function is called from a thread created by the Picoscope SDK.
+        It must be fast and thread-safe.
+        """
         if _overflow:
             self.overflow_count += 1
             logger.warning(
                 "Picoscope hardware buffer overflow detected. Data has been lost."
             )
 
-        if not self.shutdown_event.is_set():
-            callback_start_time = time.perf_counter()
-            if noOfSamples > 0:
-                self.captured_samples += noOfSamples
-                len_data = noOfSamples
-                src_idx = startIndex
+        # Stop processing if a shutdown is requested.
+        if self.shutdown_event.is_set():
+            return
 
-                while len_data > 0:
-                    self.buf_free = self.comp_buffer_size - self.buf_used
-                    copy_size = min(len_data, self.buf_free)
+        callback_start_time = time.perf_counter()
+        if noOfSamples > 0:
+            self.captured_samples += noOfSamples
+            samples_to_process = noOfSamples
+            source_index = startIndex
 
-                    self.data_buffers[self.buf_idx][
-                        self.buf_used : self.buf_used + copy_size
-                    ] = self.bufferA[src_idx : src_idx + copy_size]
+            # This loop copies data from the SDK's buffer (self.bufferA) into
+            # our larger, shared application buffers (self.data_buffers).
+            while samples_to_process > 0:
+                # Determine how much space is left in the current application buffer.
+                self.buf_free = self.comp_buffer_size - self.buf_used
+                copy_size = min(samples_to_process, self.buf_free)
 
-                    self.buf_used += copy_size
-                    len_data -= copy_size
-                    src_idx += copy_size
+                # Copy the data slice.
+                self.data_buffers[self.buf_idx][
+                    self.buf_used : self.buf_used + copy_size
+                ] = self.bufferA[source_index : source_index + copy_size]
 
-                    if self.buf_used == self.comp_buffer_size:
-                        self.data_queue.put(self.buf_idx)
-                        try:
-                            self.buf_idx = self.empty_queue.get_nowait()
-                            self.buf_used = 0
-                        except queue.Empty:
-                            self.empty_pro_queue_count += 1
-                            logger.critical(
-                                "Producer queue is empty. Consumer cannot keep up. Shutting down to prevent data loss."
-                            )
-                            self.shutdown_event.set()
-                            # Break the inner loop; we can't process more data without a buffer.
-                            break
-                duration_ms = (time.perf_counter() - callback_start_time) * 1000
-                self.callback_durations.append(duration_ms)
+                # Update pointers and remaining sample counts.
+                self.buf_used += copy_size
+                samples_to_process -= copy_size
+                source_index += copy_size
 
-    def run_capture(self):
+                # If the current application buffer is full...
+                if self.buf_used == self.comp_buffer_size:
+                    # ...send its index to the consumer.
+                    self.data_queue.put(self.buf_idx)
+                    try:
+                        # ...and get a new empty buffer from the consumer.
+                        self.buf_idx = self.empty_queue.get_nowait()
+                        self.buf_used = 0
+                    except queue.Empty:
+                        # This is a critical failure. The consumer is not keeping up.
+                        self.empty_pro_queue_count += 1
+                        logger.critical(
+                            "Producer queue is empty. Consumer cannot keep up. "
+                            "Shutting down to prevent data loss."
+                        )
+                        self.shutdown_event.set()
+                        return  # Exit immediately.
+
+            duration_ms = (time.perf_counter() - callback_start_time) * 1000
+            self.callback_durations.append(duration_ms)
+
+    def run_capture(self) -> None:
+        """The main capture loop for the producer thread."""
         if not self.streaming_configured:
             self.run_streaming()
+
+        # This loop polls the SDK for new data, which triggers the callback.
         while not self.shutdown_event.is_set():
             ps.ps5000aGetStreamingLatestValues(self.handle, self.callbackFuncPtr, None)
-            # Yield the CPU to other threads without a long pause
+            # Yield the GIL to other threads. time.sleep(0) is a common way to do this.
             time.sleep(0.0)
 
+        # --- Shutdown and reporting ---
         logger.info(
             f"Producer couldn't obtain an empty queue {self.empty_pro_queue_count} times."
         )
@@ -269,12 +344,18 @@ class PicoDevice:
             logger.info("--------------------------")
         self.close_device()
 
-    def close_device(self):
-        # Check if handle is valid before trying to close
+    def close_device(self) -> None:
+        """Stops the Picoscope and closes the connection."""
+        # Check if handle is valid before trying to close.
         if self.handle.value > 0:
             status_stop = ps.ps5000aStop(self.handle)
-            logger.debug(f"Device stop status: {status_stop}")
+            if status_stop != PICO_STATUS["PICO_OK"]:
+                logger.warning(f"ps5000aStop failed with status {status_stop}")
+
             status_close = ps.ps5000aCloseUnit(self.handle)
-            logger.debug(f"Device close status: {status_close}")
-            # Invalidate handle
+            if status_close != PICO_STATUS["PICO_OK"]:
+                logger.warning(f"ps5000aCloseUnit failed with status {status_close}")
+
+            # Invalidate handle to prevent reuse.
             self.handle.value = 0
+            logger.info("Picoscope connection closed.")
