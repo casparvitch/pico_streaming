@@ -14,6 +14,7 @@ class StreamExample:
 
     def __init__(
         self,
+        sample_rate_msps=62.5,
         enable_live_plot=False,
         output_file="/tmp/data.hdf5",
         debug=False,
@@ -32,7 +33,7 @@ class StreamExample:
         # Picoscope hardware settings
         self.pico_resolution = "PS5000A_DR_12BIT"
         self.pico_channel_range = "PS5000A_20V"
-        self.pico_sample_interval_ns = 16
+        self.pico_sample_interval_ns = int(1000 / sample_rate_msps)
         self.pico_sample_unit = "PS5000A_NS"
 
         # Picoscope driver buffer settings (internal to the driver)
@@ -225,6 +226,13 @@ if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="PicoScope Data Acquisition")
     parser.add_argument(
+        "--rate",
+        "-r",
+        type=float,
+        default=62.5,
+        help="Sample rate in MS/s (e.g., 20 for 20MS/s).",
+    )
+    parser.add_argument(
         "--plot",
         "-p",
         action="store_true",
@@ -263,6 +271,7 @@ if __name__ == "__main__":
 
     # Create and run the streamer
     streamer = StreamExample(
+        sample_rate_msps=args.rate,
         enable_live_plot=args.plot,
         output_file=args.output,
         debug=args.verbose,

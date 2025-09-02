@@ -184,8 +184,10 @@ class HDF5LivePlotter(QMainWindow):
                 self.max_adc = metadata.attrs.get("maxADC", None)
                 self.voltage_range_v = metadata.attrs.get("chAVoltageRange", 20.0)
             # Update rate label with configured sample rate
-            rate_msps = 1e3 / self.sample_interval_ns  # e.g. 16ns -> 62.5 MS/s
-            self.rate_label.setText(f"Rate: {rate_msps:.1f} MS/s")
+            configured_rate_sps = 1e9 / self.sample_interval_ns
+            self.rate_label.setText(
+                f"Rate: ... / {self._format_rate_sps(configured_rate_sps)}"
+            )
         except Exception as e:
             logger.warning(f"Could not read metadata: {e}")
 
@@ -292,11 +294,16 @@ class HDF5LivePlotter(QMainWindow):
                     elapsed_time = time.time() - self.rate_check_start_time
                     if elapsed_time > 1.0:  # Check only after 1s for stability
                         samples_acquired = current_size - self.rate_check_start_samples
-                        actual_rate = samples_acquired / elapsed_time
-                        configured_rate = 1e9 / self.sample_interval_ns
-                        rate_ratio = actual_rate / configured_rate
+                        actual_rate_sps = samples_acquired / elapsed_time
+                        configured_rate_sps = 1e9 / self.sample_interval_ns
+                        rate_ratio = actual_rate_sps / configured_rate_sps
 
-                        rate_text = f"Rate: {1e3 / self.sample_interval_ns:.1f} MS/s"
+                        configured_rate_str = self._format_rate_sps(
+                            configured_rate_sps
+                        )
+                        actual_rate_str = self._format_rate_sps(actual_rate_sps)
+
+                        rate_text = f"Rate: {actual_rate_str} / {configured_rate_str}"
                         if rate_ratio < 0.95:
                             self.rate_label.setText(
                                 f'<span style="color: red">{rate_text} (LOW!)</span>'
@@ -381,6 +388,16 @@ class HDF5LivePlotter(QMainWindow):
         # Auto-scale the Y-axis occasionally.
         if self.display_update_count % 10 == 1:
             self.plot_widget.enableAutoRange(axis="y")
+
+    def _format_rate_sps(self, rate_sps):
+        """Formats a sample rate in S/s to a human-readable string."""
+        if rate_sps >= 1e9:
+            return f"{rate_sps / 1e9:.2f} GS/s"
+        if rate_sps >= 1e6:
+            return f"{rate_sps / 1e6:.2f} MS/s"
+        if rate_sps >= 1e3:
+            return f"{rate_sps / 1e3:.2f} kS/s"
+        return f"{rate_sps:.2f} S/s"
 
     def format_sample_count(self, count):
         """Format large sample counts with appropriate units"""
