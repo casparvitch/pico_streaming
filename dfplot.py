@@ -192,31 +192,34 @@ class HDF5LivePlotter(QMainWindow):
 
                 # Track data freshness and changes
                 if current_size > self.last_displayed_size:
+                    # NEW DATA - update plot
                     self.data_change_count += 1
                     self.last_displayed_size = current_size
                     self.last_data_timestamp = current_time
+
+                    # Read only the most recent data window
+                    data_window = dataset[start_index:current_size]
+                    self.file_read_count += 1
+
+                    logger.debug(
+                        f"Update {self.update_count}: Reading window of {len(data_window):,} samples from index {start_index:,}"
+                    )
+
+                    # Update the display with this complete window (only when data changes)
+                    self.update_display(data_window)
+                    
                 else:
+                    # NO NEW DATA - skip expensive plot update
                     self.stale_update_count += 1
                     # Log if we're frequently updating with no new data
                     if self.stale_update_count % 10 == 0:
-                        logger.debug(f"Plot update #{self.update_count} with no new data (stale updates: {self.stale_update_count})")
+                        logger.debug(f"File check #{self.update_count} with no new data (stale checks: {self.stale_update_count})")
 
-                # Check data staleness
-                if self.last_data_timestamp:
-                    data_age_ms = (current_time - self.last_data_timestamp) * 1000
-                    if data_age_ms > 500:  # Data older than 500ms
-                        logger.warning(f"Displaying stale data: {data_age_ms:.0f}ms old")
-
-                # Read only the most recent data window
-                data_window = dataset[start_index:current_size]
-                self.file_read_count += 1
-
-                logger.debug(
-                    f"Update {self.update_count}: Reading window of {len(data_window):,} samples from index {start_index:,}"
-                )
-
-                # Update the display with this complete window
-                self.update_display(data_window)
+                    # Check data staleness
+                    if self.last_data_timestamp:
+                        data_age_ms = (current_time - self.last_data_timestamp) * 1000
+                        if data_age_ms > 500:  # Data older than 500ms
+                            logger.warning(f"Displaying stale data: {data_age_ms:.0f}ms old")
 
                 # Update status labels with abbreviations
                 samples_text = self.format_sample_count(current_size)
