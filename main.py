@@ -61,7 +61,7 @@ class StreamExample:
 
         self.pico_device = PicoDevice(
             0,  # handle
-            self.pico_resolution:,
+            self.pico_resolution,
             self.pico_driver_buffer_size,
             self.pico_driver_num_buffers,
             self.consumer_buffer_size,
