@@ -193,17 +193,17 @@ class HDF5LivePlotter(QMainWindow):
         """
         try:
             # Metadata is stored as root-level attributes
-            self.sample_interval_ns = hdf5_file.attrs.get("sample_interval_ns", 16)
-            self.max_adc = hdf5_file.attrs.get("max_adc", None)
-            self.voltage_range_v = hdf5_file.attrs.get("voltage_range_v", None)
+            self.sample_interval_ns = hdf5_file.attrs["sample_interval_ns"]
+            self.max_adc = hdf5_file.attrs["max_adc"]
+            self.voltage_range_v = hdf5_file.attrs["voltage_range_v"]
 
             # Update rate label with configured sample rate
             configured_rate_sps = 1e9 / self.sample_interval_ns
             self.rate_label.setText(
                 f"Rate: ... / {self._format_rate_sps(configured_rate_sps)}"
             )
-        except Exception as e:
-            logger.warning(f"Could not read metadata: {e}")
+        except KeyError:
+            logger.debug("Metadata not fully available yet. Will retry.")
 
     def _update_heartbeat(self) -> None:
         """Update UI heartbeat to show the UI thread is alive."""
