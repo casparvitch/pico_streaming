@@ -181,7 +181,9 @@ class PicoDevice:
         )
         check_status(status, "ps5000aRunStreaming")
         self.streaming_configured = True
-        logger.info(f"Streaming configured. Actual sample interval: {self.sample_int.value} ns")
+        logger.info(
+            f"Streaming configured. Actual sample interval: {self.sample_int.value} ns"
+        )
 
     # this function is called each time data is avaible from the picoscope, from here the data in the buffer should be accessed
     def streaming_callback(
@@ -197,7 +199,9 @@ class PicoDevice:
     ):
         if _overflow:
             self.overflow_count += 1
-            logger.warning("Picoscope hardware buffer overflow detected. Data has been lost.")
+            logger.warning(
+                "Picoscope hardware buffer overflow detected. Data has been lost."
+            )
 
         if not self.shutdown_event.is_set():
             if noOfSamples > 0:
