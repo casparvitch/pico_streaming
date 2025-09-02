@@ -88,11 +88,10 @@ class PicoDevice:
         status = ps.ps5000aMaximumValue(self.handle, ctypes.byref(self.max_adc))
         check_status(status, "ps5000aMaximumValue")
 
-
     def set_channel(self, chan, en, coup, range, offset):
         channel_range = ps.PS5000A_RANGE[range]
         self.channel_range = channel_range
-        
+
         # Store the actual voltage range for conversion
         range_to_voltage = {
             "PS5000A_10MV": 0.01,
@@ -111,7 +110,7 @@ class PicoDevice:
             "PS5000A_200V": 200.0,
         }
         self.voltage_range_v = range_to_voltage.get(range, 20.0)  # Default to 20V
-        
+
         channel = ps.PS5000A_CHANNEL[chan]
         coupling = ps.PS5000A_COUPLING[coup]
         status = ps.ps5000aSetChannel(
@@ -119,7 +118,9 @@ class PicoDevice:
         )
         check_status(status, f"ps5000aSetChannel ({chan})")
         logger.debug(f"Set channel {chan}: status {status}")
-        logger.debug(f"Range '{range}' maps to enum value: {ps.PS5000A_RANGE[range]}, voltage range: {self.voltage_range_v}V")
+        logger.debug(
+            f"Range '{range}' maps to enum value: {ps.PS5000A_RANGE[range]}, voltage range: {self.voltage_range_v}V"
+        )
 
     def set_data_buffer(self, chan, segment, rat):
         channel = ps.PS5000A_CHANNEL[chan]
@@ -229,7 +230,7 @@ class PicoDevice:
         while not self.shutdown_event.is_set():
             ps.ps5000aGetStreamingLatestValues(self.handle, self.callbackFuncPtr, None)
             # Give the CPU a break, crucial for preventing a busy-wait loop
-            time.sleep(0.01)
+            time.sleep(0.0)
 
         logger.info(
             f"Producer couldn't obtain an empty queue {self.empty_pro_queue_count} times."

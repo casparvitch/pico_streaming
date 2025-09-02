@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
     QLabel,
     QHBoxLayout,
 )
+from PyQt5.QtGui import QFont
 from PyQt5.QtCore import QTimer, pyqtSignal, QObject
 import pyqtgraph as pg
 from conversion_utils import adc_to_mV, min_max_decimate_numba
@@ -23,14 +24,20 @@ class HDF5LivePlotter(QMainWindow):
     Completely independent of acquisition system for zero-risk operation.
     """
 
-    def __init__(self, hdf5_path="/tmp/data.hdf5", update_interval_ms=50, display_window_seconds=0.5):
+    def __init__(
+        self,
+        hdf5_path="/tmp/data.hdf5",
+        update_interval_ms=50,
+        display_window_seconds=0.5,
+        decimation_factor=150,
+    ):
         super().__init__()
 
         # Configuration
         self.hdf5_path = hdf5_path
         self.update_interval_ms = update_interval_ms
         self.display_window_seconds = display_window_seconds
-        self.decimation_factor = 150  # 15M -> 100k display points
+        self.decimation_factor = decimation_factor  # 15M -> 100k display points
 
         # UI Heartbeat
         self.heartbeat_chars = ["|", "/", "-", "\\"]
@@ -55,13 +62,13 @@ class HDF5LivePlotter(QMainWindow):
         # Performance monitoring
         self.display_latency_ms = 0.0
         self.last_data_timestamp = None
-        
+
         # Data freshness tracking
         self.last_displayed_size = 0
         self.data_change_count = 0
         self.stale_update_count = 0
         self.last_freshness_check = time.time()
-        
+
         # Error tracking
         self.conversion_error_count = 0
         self.file_error_count = 0
@@ -98,12 +105,26 @@ class HDF5LivePlotter(QMainWindow):
         self.rate_label = QLabel("Rate: -")
         self.plotter_latency_label = QLabel("Plotter Latency: 0 ms")
         self.error_label = QLabel("Errors: 0")
-        self.acq_status_label = QLabel('<span style="color: orange">Acquisition: Waiting for file...</span>')
-        
+        self.acq_status_label = QLabel(
+            '<span style="color: orange">Acquisition: Waiting for file...</span>'
+        )
+        font = QFont()
+        font.setFamily('Monospace')
+        font.setFixedPitch(True)
+        for label in [
+            self.heartbeat_label,
+            self.samples_label,
+            self.rate_label,
+            self.plotter_latency_label,
+            self.error_label,
+            self.acq_status_label,
+        ]:
+            label.setFont(font)
+
         # Add separators between status items
         status_layout.addWidget(self.heartbeat_label)
         status_layout.addWidget(QLabel(" | "))
-        status_layout.addWidget(self.acq_status_label)
+        status_layout.addWidget(self.error_label)
         status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.samples_label)
         status_layout.addWidget(QLabel(" | "))
@@ -111,7 +132,7 @@ class HDF5LivePlotter(QMainWindow):
         status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.plotter_latency_label)
         status_layout.addWidget(QLabel(" | "))
-        status_layout.addWidget(self.error_label)
+        status_layout.addWidget(self.acq_status_label)
         status_layout.addStretch()
         layout.addLayout(status_layout)
 
@@ -120,7 +141,7 @@ class HDF5LivePlotter(QMainWindow):
         self.plot_widget.setLabel("left", "Voltage", "mV")
         self.plot_widget.setLabel("bottom", "Time", "s")
         self.plot_widget.showGrid(x=True, y=True)
-        self.plot_widget.setXRange(0, self.display_window_seconds, padding=0) 
+        self.plot_widget.setXRange(0, self.display_window_seconds, padding=0)
 
         # Plot curve
         self.curve = self.plot_widget.plot(pen="y", width=1)
@@ -136,12 +157,18 @@ class HDF5LivePlotter(QMainWindow):
         try:
             with h5py.File(self.hdf5_path, "r") as f:
                 if "adc_counts" in f:
-                    self.acq_status_label.setText('<span style="color: orange">Acquisition: Reading metadata...</span>')
+                    self.acq_status_label.setText(
+                        '<span style="color: orange">Acquisition: Reading metadata...</span>'
+                    )
                     self.read_metadata(f)
                 else:
-                    self.acq_status_label.setText('<span style="color: orange">Acquisition: Waiting for data...</span>')
+                    self.acq_status_label.setText(
+                        '<span style="color: orange">Acquisition: Waiting for data...</span>'
+                    )
         except (FileNotFoundError, OSError):
-            self.acq_status_label.setText('<span style="color: orange">Acquisition: Waiting for file...</span>')
+            self.acq_status_label.setText(
+                '<span style="color: orange">Acquisition: Waiting for file...</span>'
+            )
 
     def read_metadata(self, hdf5_file):
         """Read metadata from HDF5 file"""
@@ -164,7 +191,9 @@ class HDF5LivePlotter(QMainWindow):
 
         # Update UI heartbeat to show the UI thread is alive
         self.heartbeat_index = (self.heartbeat_index + 1) % len(self.heartbeat_chars)
-        self.heartbeat_label.setText(f"UI: {self.heartbeat_chars[self.heartbeat_index]}")
+        self.heartbeat_label.setText(
+            f"UI: {self.heartbeat_chars[self.heartbeat_index]}"
+        )
 
         try:
             with h5py.File(self.hdf5_path, "r") as f:
@@ -182,7 +211,9 @@ class HDF5LivePlotter(QMainWindow):
                     self.read_metadata(f)
 
                 # Dynamically calculate the number of samples for the display window
-                display_window_samples = int(self.display_window_seconds / (self.sample_interval_ns * 1e-9))
+                display_window_samples = int(
+                    self.display_window_seconds / (self.sample_interval_ns * 1e-9)
+                )
 
                 # Calculate where to start reading to get the last window
                 start_index = max(0, current_size - display_window_samples)
@@ -195,7 +226,9 @@ class HDF5LivePlotter(QMainWindow):
                     self.data_change_count += 1
                     self.last_displayed_size = current_size
                     self.last_data_timestamp = current_time
-                    self.acq_status_label.setText('<span style="color: green">Acquisition: Active</span>')
+                    self.acq_status_label.setText(
+                        '<span style="color: green">Acquisition: Active</span>'
+                    )
 
                     # Read only the most recent data window
                     data_window = dataset[start_index:current_size]
@@ -211,30 +244,50 @@ class HDF5LivePlotter(QMainWindow):
                 else:
                     # NO NEW DATA - skip expensive plot update
                     self.stale_update_count += 1
-                    self.acq_status_label.setText('<span style="color: orange">Acquisition: Acquiring...</span>')
+                    self.acq_status_label.setText(
+                        '<span style="color: orange">Acquisition: Acquiring...</span>'
+                    )
                     # Log if we're frequently updating with no new data
                     if self.stale_update_count % 10 == 0:
-                        logger.debug(f"File check #{self.update_count} with no new data (stale checks: {self.stale_update_count})")
+                        logger.debug(
+                            f"File check #{self.update_count} with no new data (stale checks: {self.stale_update_count})"
+                        )
 
                 # Update status labels with abbreviations
                 samples_text = self.format_sample_count(current_size)
                 self.samples_label.setText(f"Samples: {samples_text}")
-                
+
                 # Color-code latency: Green < 100ms, Yellow < 500ms, Red >= 500ms
-                latency_color = "green" if self.display_latency_ms < 100 else "orange" if self.display_latency_ms < 500 else "red"
-                self.plotter_latency_label.setText(f'<span style="color: {latency_color}">Plotter Latency: {self.display_latency_ms:.0f}ms</span>')
-                
+                latency_color = (
+                    "green"
+                    if self.display_latency_ms < 100
+                    else "orange" if self.display_latency_ms < 500 else "red"
+                )
+                self.plotter_latency_label.setText(
+                    f'<span style="color: {latency_color}">Plotter Latency: {self.display_latency_ms:.0f}ms</span>'
+                )
+
                 # Error counter with color coding
                 total_errors = self.conversion_error_count + self.file_error_count
-                error_color = "green" if total_errors == 0 else "orange" if total_errors < 10 else "red"
-                self.error_label.setText(f'<span style="color: {error_color}">Errors: {total_errors}</span>')
+                error_color = (
+                    "green"
+                    if total_errors == 0
+                    else "orange" if total_errors < 10 else "red"
+                )
+                self.error_label.setText(
+                    f'<span style="color: {error_color}">Errors: {total_errors}</span>'
+                )
 
         except (FileNotFoundError, OSError):
-            self.acq_status_label.setText('<span style="color: orange">Acquisition: Waiting for file...</span>')
+            self.acq_status_label.setText(
+                '<span style="color: orange">Acquisition: Waiting for file...</span>'
+            )
         except Exception as e:
             self.file_error_count += 1
             logger.error(f"Update {self.update_count}: Error reading file - {e}")
-            self.acq_status_label.setText(f'<span style="color: red">Acquisition: File error!</span>')
+            self.acq_status_label.setText(
+                f'<span style="color: red">Acquisition: File error!</span>'
+            )
 
     def update_display(self, data_window):
         """Update the oscilloscope display with a full window of data."""
@@ -257,19 +310,27 @@ class HDF5LivePlotter(QMainWindow):
 
         # Debug: Log ADC values and metadata
         logger.debug(f"ADC range: {decimated_data.min()} to {decimated_data.max()}")
-        logger.debug(f"voltage_range_v: {self.voltage_range_v}, max_adc: {self.max_adc}")
+        logger.debug(
+            f"voltage_range_v: {self.voltage_range_v}, max_adc: {self.max_adc}"
+        )
 
         # Convert to voltage if we have calibration data
         if self.voltage_range_v is not None and self.max_adc is not None:
             try:
-                voltage_data = adc_to_mV(decimated_data, self.voltage_range_v, self.max_adc)
-                logger.debug(f"Voltage conversion successful, range: {voltage_data.min():.1f} to {voltage_data.max():.1f} mV")
+                voltage_data = adc_to_mV(
+                    decimated_data, self.voltage_range_v, self.max_adc
+                )
+                logger.debug(
+                    f"Voltage conversion successful, range: {voltage_data.min():.1f} to {voltage_data.max():.1f} mV"
+                )
             except Exception as e:
                 self.conversion_error_count += 1
                 logger.warning(f"Voltage conversion failed: {e}, using raw ADC values")
                 voltage_data = decimated_data.astype(float)
         else:
-            logger.warning("Missing calibration data (voltage_range_v or max_adc), using raw ADC values")
+            logger.warning(
+                "Missing calibration data (voltage_range_v or max_adc), using raw ADC values"
+            )
             voltage_data = decimated_data.astype(float)
 
         # Create time axis for the current window
@@ -293,8 +354,7 @@ class HDF5LivePlotter(QMainWindow):
 
         # Auto-scale the Y-axis occasionally.
         if self.display_update_count % 10 == 1:
-            self.plot_widget.enableAutoRange(axis='y')
-
+            self.plot_widget.enableAutoRange(axis="y")
 
     def format_sample_count(self, count):
         """Format large sample counts with appropriate units"""
@@ -316,10 +376,12 @@ class HDF5LivePlotter(QMainWindow):
         start_time = self.data_start_sample * time_per_sample
 
         # Calculate the end time based on the last sample in the original window
-        end_time = (self.data_start_sample + len(self.display_data) - 1) * time_per_sample
+        end_time = (
+            self.data_start_sample + len(self.display_data) - 1
+        ) * time_per_sample
         if end_time < start_time:
             end_time = start_time
-            
+
         return np.linspace(start_time, end_time, n_samples)
 
     def closeEvent(self, event):
