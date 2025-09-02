@@ -108,6 +108,7 @@ class StreamExample:
         self.enable_live_plot = enable_live_plot
         self.live_plotter = None
         self.qt_app = None
+        self.start_time = None
 
         if self.enable_live_plot:
             # Import Qt components only when needed
@@ -132,6 +133,38 @@ class StreamExample:
     def shutdown(self):
         if self.shutdown_event.is_set():
             return
+
+        # Calculate effective duration and rate
+        if self.start_time:
+            end_time = time.time()
+            duration = end_time - self.start_time
+            total_samples = self.consumer.values_written
+            effective_rate_msps = (
+                (total_samples / duration) / 1e6 if duration > 0 else 0
+            )
+            configured_rate_msps = 1e3 / self.pico_device.sample_int.value
+
+            logger.info("--- Acquisition Summary ---")
+            logger.info(f"Total acquisition time: {duration:.2f} s")
+            logger.info(
+                f"Total samples written: {self.consumer.format_sample_count(total_samples)}"
+            )
+            logger.info(f"Configured sample rate: {configured_rate_msps:.2f} MS/s")
+            logger.info(f"Effective average rate: {effective_rate_msps:.2f} MS/s")
+
+            rate_ratio = (
+                effective_rate_msps / configured_rate_msps
+                if configured_rate_msps > 0
+                else 0
+            )
+            if rate_ratio < 0.95:
+                logger.warning(
+                    f"Effective rate was only {rate_ratio:.1%} of the configured rate."
+                )
+            else:
+                logger.success("Effective rate matches configured rate.")
+            logger.info("--------------------------")
+
         self.shutdown_event.set()
 
         logger.info("Stopping data acquisition and saving...")
@@ -165,6 +198,7 @@ class StreamExample:
 
     def run(self):
         # Start acquisition threads
+        self.start_time = time.time()
         self.consumer_thread.start()
         self.pico_thread.start()
 

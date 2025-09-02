@@ -38,6 +38,17 @@ class Consumer:
 
         self.empty_con_queue_count = 0
 
+    def format_sample_count(self, count):
+        """Format large sample counts with appropriate units"""
+        if count >= 1_000_000_000:
+            return f"{count / 1_000_000_000:.2f}G"
+        elif count >= 1_000_000:
+            return f"{count / 1_000_000:.2f}M"
+        elif count >= 1_000:
+            return f"{count / 1_000:.2f}K"
+        else:
+            return str(count)
+
     def consume(self):
         total_save_length = 0
         metadata = {
