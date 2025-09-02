@@ -54,6 +54,10 @@ class HDF5LivePlotter(QMainWindow):
         self.data_rate_mb_s = 0.0
         self.display_latency_ms = 0.0
         self.last_data_timestamp = None
+        
+        # Error tracking
+        self.conversion_error_count = 0
+        self.file_error_count = 0
 
         # Setup UI
         self.setup_ui()
@@ -87,12 +91,22 @@ class HDF5LivePlotter(QMainWindow):
         self.rate_label = QLabel("Rate: 0 MS/s")
         self.data_rate_label = QLabel("Data: 0 MB/s")
         self.latency_label = QLabel("Latency: 0 ms")
+        self.error_label = QLabel("Errors: 0")
         self.acq_status_label = QLabel("Acquisition: Starting...")
+        
+        # Add separators between status items
         status_layout.addWidget(self.status_label)
+        status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.samples_label)
+        status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.rate_label)
+        status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.data_rate_label)
+        status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.latency_label)
+        status_layout.addWidget(QLabel(" | "))
+        status_layout.addWidget(self.error_label)
+        status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.acq_status_label)
         status_layout.addStretch()
         layout.addLayout(status_layout)
@@ -184,8 +198,10 @@ class HDF5LivePlotter(QMainWindow):
                 # Update the display with this complete window
                 self.update_display(data_window)
 
-                # Update status labels
-                self.samples_label.setText(f"Samples: {current_size:,}")
+                # Update status labels with abbreviations
+                samples_text = self.format_sample_count(current_size)
+                self.samples_label.setText(f"Samples: {samples_text}")
+                
                 elapsed_time = time.time() - getattr(self, "start_time", time.time())
                 if not hasattr(self, "start_time"):
                     self.start_time = time.time()
@@ -199,18 +215,22 @@ class HDF5LivePlotter(QMainWindow):
                 
                 # Color-code latency: Green < 100ms, Yellow < 500ms, Red >= 500ms
                 latency_color = "green" if self.display_latency_ms < 100 else "orange" if self.display_latency_ms < 500 else "red"
-                self.latency_label.setText(f'<span style="color: {latency_color}">Latency: {self.display_latency_ms:.0f} ms</span>')
+                self.latency_label.setText(f'<span style="color: {latency_color}">Latency: {self.display_latency_ms:.0f}ms</span>')
                 
-                self.status_label.setText(
-                    f"Status: Live streaming (Updates: {self.file_read_count})"
-                )
+                # Error counter with color coding
+                total_errors = self.conversion_error_count + self.file_error_count
+                error_color = "green" if total_errors == 0 else "orange" if total_errors < 10 else "red"
+                self.error_label.setText(f'<span style="color: {error_color}">Errors: {total_errors}</span>')
+                
+                self.status_label.setText(f"Status: Live (R:{self.file_read_count})")
                 self.acq_status_label.setText("Acquisition: Active")
 
         except (FileNotFoundError, OSError):
-            self.status_label.setText(f"Status: Waiting for {self.hdf5_path}")
+            self.status_label.setText(f"Status: Waiting for file")
         except Exception as e:
+            self.file_error_count += 1
             logger.error(f"Update {self.update_count}: Error reading file - {e}")
-            self.status_label.setText(f"Status: Error reading file - {str(e)}")
+            self.status_label.setText(f"Status: File error ({self.file_error_count})")
 
     def update_display(self, data_window):
         """Update the oscilloscope display with a full window of data."""
@@ -241,6 +261,7 @@ class HDF5LivePlotter(QMainWindow):
                 voltage_data = adc_to_mV(decimated_data, self.voltage_range_v, self.max_adc)
                 logger.debug(f"Voltage conversion successful, range: {voltage_data.min():.1f} to {voltage_data.max():.1f} mV")
             except Exception as e:
+                self.conversion_error_count += 1
                 logger.warning(f"Voltage conversion failed: {e}, using raw ADC values")
                 voltage_data = decimated_data.astype(float)
         else:
@@ -305,6 +326,17 @@ class HDF5LivePlotter(QMainWindow):
             decimated = np.concatenate([decimated, remainder])
 
         return decimated
+
+    def format_sample_count(self, count):
+        """Format large sample counts with appropriate units"""
+        if count >= 1_000_000_000:
+            return f"{count / 1_000_000_000:.1f}G"
+        elif count >= 1_000_000:
+            return f"{count / 1_000_000:.1f}M"
+        elif count >= 1_000:
+            return f"{count / 1_000:.1f}K"
+        else:
+            return str(count)
 
     def create_time_axis(self, n_samples):
         """
