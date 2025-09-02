@@ -1,5 +1,6 @@
 import sys
 import time
+import warnings
 import numpy as np
 import h5py
 from loguru import logger
@@ -198,13 +199,22 @@ class HDF5LivePlotter(QMainWindow):
             self.display_data, self.decimation_factor
         )
 
+        # Debug: Log ADC values and metadata
+        logger.debug(f"ADC range: {decimated_data.min()} to {decimated_data.max()}")
+        logger.debug(f"ch_range: {self.ch_range}, max_adc: {self.max_adc}")
+
         # Convert to voltage if we have calibration data
         if self.ch_range is not None and self.max_adc is not None:
             try:
-                voltage_data = adc2mV(decimated_data, self.ch_range, self.max_adc)
-            except Exception:
-                voltage_data = decimated_data.astype(float)  # Fallback
+                with warnings.catch_warnings():
+                    warnings.simplefilter("error")
+                    voltage_data = adc2mV(decimated_data, self.ch_range, self.max_adc)
+                logger.debug(f"Voltage conversion successful, range: {voltage_data.min():.1f} to {voltage_data.max():.1f} mV")
+            except (RuntimeWarning, Exception) as e:
+                logger.warning(f"Voltage conversion failed: {e}, using raw ADC values")
+                voltage_data = decimated_data.astype(float)
         else:
+            logger.warning("Missing calibration data (ch_range or max_adc), using raw ADC values")
             voltage_data = decimated_data.astype(float)
 
         # Create time axis for the current window
