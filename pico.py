@@ -80,6 +80,7 @@ class PicoDevice:
         self.max_sample_point = 0
         self.max_sample_count = 0
         self.empty_pro_queue_count = 0
+        self.overflow_count = 0
 
         ####### Open device conneciton #######
         status = ps.ps5000aOpenUnit(ctypes.byref(self.handle), None, res)
@@ -192,6 +193,9 @@ class PicoDevice:
         _autoStop,
         _param,
     ):
+        if _overflow:
+            self.overflow_count += 1
+            logger.warning("Picoscope hardware buffer overflow detected. Data has been lost.")
 
         if not self.shutdown_event.is_set():
             if noOfSamples > 0:
@@ -235,6 +239,7 @@ class PicoDevice:
         logger.info(
             f"Producer couldn't obtain an empty queue {self.empty_pro_queue_count} times."
         )
+        logger.info(f"Picoscope hardware overflowed {self.overflow_count} times.")
         self.close_device()
 
     def close_device(self):
