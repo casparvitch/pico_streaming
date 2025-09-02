@@ -36,7 +36,7 @@ class StreamExample:
         self.pico_sample_unit = "PS5000A_NS"
 
         # Picoscope driver buffer settings (internal to the driver)
-        self.pico_driver_buffer_size = 6_400_000   # Samples
+        self.pico_driver_buffer_size = 6_400_000  # Samples
         self.pico_driver_num_buffers = 1
 
         # Streaming settings
