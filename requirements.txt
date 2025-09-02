@@ -4,3 +4,5 @@ picosdk
 pyqtgraph
 PyQt5
 matplotlib
+loguru
+numba

@@ -113,7 +113,7 @@ class HDF5LivePlotter(QMainWindow):
             '<span style="color: orange">Acquisition: Waiting for file...</span>'
         )
         font = QFont()
-        font.setFamily('Monospace')
+        font.setFamily("Monospace")
         font.setFixedPitch(True)
         for label in [
             self.heartbeat_label,
@@ -415,13 +415,14 @@ class HDF5LivePlotter(QMainWindow):
         self.timer.stop()
         event.accept()
 
-    def keyPressEvent(self, event): 
-        """Handle key presses."""   
-        if event.key() == Qt.Key_Q:  
-            logger.info("'Q' key pressed. Closing application.")   
-            self.close()          
-        else:             
-            super().keyPressEvent(event) 
+    def keyPressEvent(self, event):
+        """Handle key presses."""
+        if event.key() == Qt.Key_Q:
+            logger.info("'Q' key pressed. Closing application.")
+            self.close()
+        else:
+            super().keyPressEvent(event)
+
 
 def main():
     """Standalone application entry point"""

@@ -6,12 +6,12 @@ import numba as nb
 def adc_to_mV(adc_data, voltage_range_v, max_adc_value):
     """
     Convert ADC counts to voltage in mV using Numba JIT compilation.
-    
+
     Args:
         adc_data: numpy array of int16 ADC values
         voltage_range_v: float, full scale voltage range (e.g., 20.0 for ±20V)
         max_adc_value: int, maximum ADC value (typically 32767 for 16-bit)
-    
+
     Returns:
         numpy array of voltages in mV
     """
@@ -35,24 +35,24 @@ def min_max_decimate_numba(data, factor):
 
     # Pre-allocate output array
     decimated = np.empty(n_complete_groups * 2, dtype=data.dtype)
-    
+
     # Process each group
     for i in range(n_complete_groups):
         start_idx = i * factor
         end_idx = start_idx + factor
-        
+
         # Find min and max in this group
         group_min = data[start_idx]
         group_max = data[start_idx]
-        
+
         for j in range(start_idx + 1, end_idx):
             if data[j] < group_min:
                 group_min = data[j]
             if data[j] > group_max:
                 group_max = data[j]
-        
+
         # Store min and max
         decimated[i * 2] = group_min
         decimated[i * 2 + 1] = group_max
-    
+
     return decimated
