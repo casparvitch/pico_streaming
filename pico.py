@@ -217,9 +217,10 @@ class PicoDevice:
                             self.buf_used = 0
                         except queue.Empty:
                             self.empty_pro_queue_count += 1
-                            logger.error(
-                                "Producer queue is empty. Data will be dropped until a buffer is available."
+                            logger.critical(
+                                "Producer queue is empty. Consumer cannot keep up. Shutting down to prevent data loss."
                             )
+                            self.shutdown_event.set()
                             # Break the inner loop; we can't process more data without a buffer.
                             break
 
