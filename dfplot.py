@@ -48,6 +48,13 @@ class HDF5LivePlotter(QMainWindow):
         self.file_read_count = 0
         self.display_update_count = 0
 
+        # Performance monitoring
+        self.last_file_size = 0
+        self.last_rate_time = time.time()
+        self.data_rate_mb_s = 0.0
+        self.display_latency_ms = 0.0
+        self.last_data_timestamp = None
+
         # Setup UI
         self.setup_ui()
 
@@ -78,10 +85,14 @@ class HDF5LivePlotter(QMainWindow):
         self.status_label = QLabel("Status: Waiting for data...")
         self.samples_label = QLabel("Samples: 0")
         self.rate_label = QLabel("Rate: 0 MS/s")
+        self.data_rate_label = QLabel("Data: 0 MB/s")
+        self.latency_label = QLabel("Latency: 0 ms")
         self.acq_status_label = QLabel("Acquisition: Starting...")
         status_layout.addWidget(self.status_label)
         status_layout.addWidget(self.samples_label)
         status_layout.addWidget(self.rate_label)
+        status_layout.addWidget(self.data_rate_label)
+        status_layout.addWidget(self.latency_label)
         status_layout.addWidget(self.acq_status_label)
         status_layout.addStretch()
         layout.addLayout(status_layout)
@@ -148,6 +159,20 @@ class HDF5LivePlotter(QMainWindow):
                 start_index = max(0, current_size - self.display_window_samples)
                 self.data_start_sample = start_index
 
+                # Calculate data rate
+                current_time = time.time()
+                current_file_size = current_size * 2  # 2 bytes per int16 sample
+                time_delta = current_time - self.last_rate_time
+                
+                if time_delta >= 1.0:  # Update rate every second
+                    size_delta = current_file_size - self.last_file_size
+                    self.data_rate_mb_s = (size_delta / (1024 * 1024)) / time_delta
+                    self.last_file_size = current_file_size
+                    self.last_rate_time = current_time
+
+                # Store timestamp for latency calculation
+                self.last_data_timestamp = current_time
+
                 # Read only the most recent data window
                 data_window = dataset[start_index:current_size]
                 self.file_read_count += 1
@@ -170,6 +195,12 @@ class HDF5LivePlotter(QMainWindow):
                     else 0
                 )
                 self.rate_label.setText(f"Rate: {rate_ms:.1f} MS/s")
+                self.data_rate_label.setText(f"Data: {self.data_rate_mb_s:.1f} MB/s")
+                
+                # Color-code latency: Green < 100ms, Yellow < 500ms, Red >= 500ms
+                latency_color = "green" if self.display_latency_ms < 100 else "orange" if self.display_latency_ms < 500 else "red"
+                self.latency_label.setText(f'<span style="color: {latency_color}">Latency: {self.display_latency_ms:.0f} ms</span>')
+                
                 self.status_label.setText(
                     f"Status: Live streaming (Updates: {self.file_read_count})"
                 )
