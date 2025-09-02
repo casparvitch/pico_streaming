@@ -119,7 +119,6 @@ class HDF5LivePlotter(QMainWindow):
         self.plot_widget = pg.PlotWidget()
         self.plot_widget.setLabel("left", "Voltage", "mV")
         self.plot_widget.setLabel("bottom", "Time", "s")
-        self.plot_widget.setTitle("Channel A - Live Data")
         self.plot_widget.showGrid(x=True, y=True)
 
         # Plot curve
@@ -284,10 +283,6 @@ class HDF5LivePlotter(QMainWindow):
 
         # Update plot
         self.curve.setData(time_axis, voltage_data)
-
-        # Update plot title with counters for feedback
-        title = f"Channel A - File reads: {self.file_read_count}, Plot updates: {self.display_update_count}"
-        self.plot_widget.setTitle(title)
 
         # Manually set the X-axis range to follow the data, creating a scroll effect.
         self.plot_widget.setXRange(time_axis[0], time_axis[-1], padding=0)
