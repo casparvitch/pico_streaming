@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional
 from loguru import logger
 
 from picosdk.ps5000a import ps5000a as ps
-from picosdk.functions import adc2mV, PICO_STATUS
+from picosdk.functions import PICO_STATUS
 
 
 def check_status(status: int, function_name: str) -> None:
@@ -28,7 +28,7 @@ def check_status(status: int, function_name: str) -> None:
         error_name = next(
             (k for k, v in PICO_STATUS.items() if v == status), "PICO_UNKNOWN_ERROR"
         )
-        raise Exception(f"{function_name} failed with status {status} ({error_name})")
+        raise RuntimeError(f"{function_name} failed with status {status} ({error_name})")
 
 
 class PicoDevice:
@@ -124,7 +124,7 @@ class PicoDevice:
         check_status(status, "ps5000aMaximumValue")
 
     def set_channel(
-        self, chan: str, en: int, coup: str, range: str, offset: float
+        self, chan: str, en: int, coup: str, voltage_range_str: str, offset: float
     ) -> None:
         """Configure a channel on the Picoscope.
 
@@ -132,10 +132,10 @@ class PicoDevice:
             chan: The channel identifier string, e.g., "PS5000A_CHANNEL_A".
             en: Whether the channel is enabled (1) or disabled (0).
             coup: The coupling type string, e.g., "PS5000A_DC".
-            range: The voltage range string, e.g., "PS5000A_20V".
+            voltage_range_str: The voltage range string, e.g., "PS5000A_20V".
             offset: The analog voltage offset in Volts.
         """
-        channel_range_enum = ps.PS5000A_RANGE[range]
+        channel_range_enum = ps.PS5000A_RANGE[voltage_range_str]
         self.channel_range = channel_range_enum
 
         # Store the actual voltage range for metadata and conversion
@@ -155,11 +155,11 @@ class PicoDevice:
             "PS5000A_100V": 100.0,
             "PS5000A_200V": 200.0,
         }
-        self.voltage_range_v = range_to_voltage.get(range)
+        self.voltage_range_v = range_to_voltage.get(voltage_range_str)
 
         if chan == "PS5000A_CHANNEL_A" and en:
             self.channel_a_coupling = coup
-            self.channel_a_range_str = range
+            self.channel_a_range_str = voltage_range_str
 
         channel_enum = ps.PS5000A_CHANNEL[chan]
         coupling_enum = ps.PS5000A_COUPLING[coup]
@@ -168,7 +168,7 @@ class PicoDevice:
         )
         check_status(status, f"ps5000aSetChannel ({chan})")
         logger.debug(
-            f"Range '{range}' maps to enum value: {channel_range_enum}, voltage range: {self.voltage_range_v}V"
+            f"Range '{voltage_range_str}' maps to enum value: {channel_range_enum}, voltage range: {self.voltage_range_v}V"
         )
 
     def set_data_buffer(self, chan: str, segment: int, rat: str) -> None:

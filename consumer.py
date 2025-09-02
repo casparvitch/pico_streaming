@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import queue
 import h5py
-import time
 import numpy as np
 import os
 from loguru import logger
@@ -63,9 +62,9 @@ class Consumer:
         """
         if count >= 1_000_000_000:
             return f"{count / 1_000_000_000:.2f}G"
-        elif count >= 1_000_000:
+        if count >= 1_000_000:
             return f"{count / 1_000_000:.2f}M"
-        elif count >= 1_000:
+        if count >= 1_000:
             return f"{count / 1_000:.2f}K"
         else:
             return str(count)
@@ -77,7 +76,6 @@ class Consumer:
         the HDF5 file, and returns the buffer for reuse. It handles file setup,
         the main processing loop, and graceful shutdown.
         """
-        total_save_length = 0
         try:
             # Ensure a clean slate by removing any pre-existing file.
             if os.path.exists(self.file_name):

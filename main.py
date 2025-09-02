@@ -151,7 +151,7 @@ class StreamExample:
                 decimation_factor=decimation_factor,
             )
 
-    def signal_handler(self, sig: int, frame: Optional[object]) -> None:
+    def signal_handler(self, _sig: int, frame: Optional[object]) -> None:
         """Handles Ctrl+C interrupts to initiate a graceful shutdown."""
         logger.warning("Ctrl+C detected. Shutting down.")
         self.shutdown()

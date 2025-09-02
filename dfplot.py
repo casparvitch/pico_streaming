@@ -205,124 +205,143 @@ class HDF5LivePlotter(QMainWindow):
         except Exception as e:
             logger.warning(f"Could not read metadata: {e}")
 
-    def update_from_file(self) -> None:
-        """Timer-driven function to read data from the HDF5 file and update the plot."""
-        self.update_count += 1
-
-        # Update UI heartbeat to show the UI thread is alive
+    def _update_heartbeat(self) -> None:
+        """Update UI heartbeat to show the UI thread is alive."""
         self.heartbeat_index = (self.heartbeat_index + 1) % len(self.heartbeat_chars)
         self.heartbeat_label.setText(
             f"UI: {self.heartbeat_chars[self.heartbeat_index]}"
         )
 
+    def _handle_new_data(
+        self, dataset: h5py.Dataset, start_index: int, current_size: int
+    ) -> None:
+        """Process a new window of data."""
+        self.data_change_count += 1
+        self.last_displayed_size = current_size
+        self.last_data_timestamp = time.time()
+        self.acq_status_label.setText(
+            '<span style="color: green">Acquisition: Active</span>'
+        )
+
+        # Read only the most recent data window
+        data_window = dataset[start_index:current_size]
+        self.file_read_count += 1
+
+        logger.debug(
+            f"Update {self.update_count}: Reading window of {len(data_window):,} samples from index {start_index:,}"
+        )
+
+        # Update the display with this complete window (only when data changes)
+        self.update_display(data_window)
+
+    def _handle_stale_data(self) -> None:
+        """Handle a file check where no new data is found."""
+        self.stale_update_count += 1
+        self.acq_status_label.setText(
+            '<span style="color: orange">Acquisition: Acquiring...</span>'
+        )
+        # Log if we're frequently updating with no new data
+        if self.stale_update_count % 10 == 0:
+            logger.debug(
+                f"File check #{self.update_count} with no new data (stale checks: {self.stale_update_count})"
+            )
+
+    def _update_status_labels(self, current_size: int) -> None:
+        """Update the various status labels in the UI."""
+        # Update samples label
+        samples_text = self.format_sample_count(current_size)
+        self.samples_label.setText(f"Samples: {samples_text}")
+
+        # Color-code latency
+        latency_color = (
+            "green"
+            if self.display_latency_ms < 100
+            else "orange" if self.display_latency_ms < 500 else "red"
+        )
+        self.plotter_latency_label.setText(
+            f'<span style="color: {latency_color}">Plotter Latency: {self.display_latency_ms:.0f}ms</span>'
+        )
+
+        # Error counter
+        total_errors = self.conversion_error_count + self.file_error_count
+        error_color = (
+            "green"
+            if total_errors == 0
+            else "orange" if total_errors < 10 else "red"
+        )
+        self.error_label.setText(
+            f'<span style="color: {error_color}">Errors: {total_errors}</span>'
+        )
+
+    def _update_rate_label(self, current_size: int) -> None:
+        """Check and update acquisition rate status."""
+        if not self.rate_check_start_time:
+            return
+
+        elapsed_time = time.time() - self.rate_check_start_time
+        if elapsed_time > 1.0:  # Check only after 1s for stability
+            samples_acquired = current_size - self.rate_check_start_samples
+            actual_rate_sps = samples_acquired / elapsed_time
+            configured_rate_sps = 1e9 / self.sample_interval_ns
+            rate_ratio = actual_rate_sps / configured_rate_sps
+
+            configured_rate_str = self._format_rate_sps(configured_rate_sps)
+            actual_rate_str = self._format_rate_sps(actual_rate_sps)
+
+            rate_text = f"Rate: {actual_rate_str} / {configured_rate_str}"
+            if rate_ratio < 0.95:
+                self.rate_label.setText(
+                    f'<span style="color: red">{rate_text} (LOW!)</span>'
+                )
+            else:
+                self.rate_label.setText(rate_text)
+
+    def _process_data_from_file(self, f: h5py.File) -> None:
+        """Read and process data from an open HDF5 file."""
+        if "adc_counts" not in f:
+            return
+
+        dataset = f["adc_counts"]
+        current_size = dataset.shape[0]
+
+        if current_size == 0:
+            return
+
+        # Start the rate check timer on the first data point
+        if self.rate_check_start_time is None:
+            self.rate_check_start_time = time.time()
+            self.rate_check_start_samples = current_size
+
+        # Read metadata if not already done
+        if self.voltage_range_v is None:
+            self.read_metadata(f)
+
+        # Dynamically calculate the number of samples for the display window
+        display_window_samples = int(
+            self.display_window_seconds / (self.sample_interval_ns * 1e-9)
+        )
+
+        # Calculate where to start reading to get the last window
+        start_index = max(0, current_size - display_window_samples)
+        self.data_start_sample = start_index
+
+        # Track data freshness and changes
+        if current_size > self.last_displayed_size:
+            self._handle_new_data(dataset, start_index, current_size)
+        else:
+            self._handle_stale_data()
+
+        self._update_status_labels(current_size)
+        self._update_rate_label(current_size)
+
+    def update_from_file(self) -> None:
+        """Timer-driven function to read data from the HDF5 file and update the plot."""
+        self.update_count += 1
+        self._update_heartbeat()
+
         try:
             with h5py.File(self.hdf5_path, "r") as f:
-                if "adc_counts" not in f:
-                    return
-
-                dataset = f["adc_counts"]
-                current_size = dataset.shape[0]
-
-                if current_size == 0:
-                    return
-
-                # Start the rate check timer on the first data point
-                if self.rate_check_start_time is None and current_size > 0:
-                    self.rate_check_start_time = time.time()
-                    self.rate_check_start_samples = current_size
-
-                # Read metadata if not already done
-                if self.voltage_range_v is None:
-                    self.read_metadata(f)
-
-                # Dynamically calculate the number of samples for the display window
-                display_window_samples = int(
-                    self.display_window_seconds / (self.sample_interval_ns * 1e-9)
-                )
-
-                # Calculate where to start reading to get the last window
-                start_index = max(0, current_size - display_window_samples)
-                self.data_start_sample = start_index
-
-                # Track data freshness and changes
-                current_time = time.time()
-                if current_size > self.last_displayed_size:
-                    # NEW DATA - update plot
-                    self.data_change_count += 1
-                    self.last_displayed_size = current_size
-                    self.last_data_timestamp = current_time
-                    self.acq_status_label.setText(
-                        '<span style="color: green">Acquisition: Active</span>'
-                    )
-
-                    # Read only the most recent data window
-                    data_window = dataset[start_index:current_size]
-                    self.file_read_count += 1
-
-                    logger.debug(
-                        f"Update {self.update_count}: Reading window of {len(data_window):,} samples from index {start_index:,}"
-                    )
-
-                    # Update the display with this complete window (only when data changes)
-                    self.update_display(data_window)
-
-                else:
-                    # NO NEW DATA - skip expensive plot update
-                    self.stale_update_count += 1
-                    self.acq_status_label.setText(
-                        '<span style="color: orange">Acquisition: Acquiring...</span>'
-                    )
-                    # Log if we're frequently updating with no new data
-                    if self.stale_update_count % 10 == 0:
-                        logger.debug(
-                            f"File check #{self.update_count} with no new data (stale checks: {self.stale_update_count})"
-                        )
-
-                # Update status labels with abbreviations
-                samples_text = self.format_sample_count(current_size)
-                self.samples_label.setText(f"Samples: {samples_text}")
-
-                # Color-code latency: Green < 100ms, Yellow < 500ms, Red >= 500ms
-                latency_color = (
-                    "green"
-                    if self.display_latency_ms < 100
-                    else "orange" if self.display_latency_ms < 500 else "red"
-                )
-                self.plotter_latency_label.setText(
-                    f'<span style="color: {latency_color}">Plotter Latency: {self.display_latency_ms:.0f}ms</span>'
-                )
-
-                # Error counter with color coding
-                total_errors = self.conversion_error_count + self.file_error_count
-                error_color = (
-                    "green"
-                    if total_errors == 0
-                    else "orange" if total_errors < 10 else "red"
-                )
-                self.error_label.setText(
-                    f'<span style="color: {error_color}">Errors: {total_errors}</span>'
-                )
-
-                # Check and update acquisition rate status
-                if self.rate_check_start_time:
-                    elapsed_time = time.time() - self.rate_check_start_time
-                    if elapsed_time > 1.0:  # Check only after 1s for stability
-                        samples_acquired = current_size - self.rate_check_start_samples
-                        actual_rate_sps = samples_acquired / elapsed_time
-                        configured_rate_sps = 1e9 / self.sample_interval_ns
-                        rate_ratio = actual_rate_sps / configured_rate_sps
-
-                        configured_rate_str = self._format_rate_sps(configured_rate_sps)
-                        actual_rate_str = self._format_rate_sps(actual_rate_sps)
-
-                        rate_text = f"Rate: {actual_rate_str} / {configured_rate_str}"
-                        if rate_ratio < 0.95:
-                            self.rate_label.setText(
-                                f'<span style="color: red">{rate_text} (LOW!)</span>'
-                            )
-                        else:
-                            self.rate_label.setText(rate_text)
-
+                self._process_data_from_file(f)
         except (FileNotFoundError, OSError):
             self.acq_status_label.setText(
                 '<span style="color: orange">Acquisition: Waiting for file...</span>'
@@ -428,9 +447,9 @@ class HDF5LivePlotter(QMainWindow):
         """
         if count >= 1_000_000_000:
             return f"{count / 1_000_000_000:.1f}G"
-        elif count >= 1_000_000:
+        if count >= 1_000_000:
             return f"{count / 1_000_000:.1f}M"
-        elif count >= 1_000:
+        if count >= 1_000:
             return f"{count / 1_000:.1f}K"
         else:
             return str(count)
@@ -455,8 +474,7 @@ class HDF5LivePlotter(QMainWindow):
         end_time = (
             self.data_start_sample + len(self.display_data) - 1
         ) * time_per_sample
-        if end_time < start_time:
-            end_time = start_time
+        end_time = max(start_time, end_time)
 
         return np.linspace(start_time, end_time, n_samples)
 
