@@ -288,8 +288,7 @@ class HDF5LivePlotter(QMainWindow):
         # Update plot
         self.curve.setData(time_axis, voltage_data)
 
-        # Manually set the X-axis range to follow the data, creating a scroll effect.
-        self.plot_widget.setXRange(time_axis[0], time_axis[-1], padding=0)
+        # The X-axis range is fixed. We do not scroll.
 
         # Auto-scale the Y-axis occasionally.
         if self.display_update_count % 10 == 1:
@@ -309,15 +308,14 @@ class HDF5LivePlotter(QMainWindow):
 
     def create_time_axis(self, n_samples):
         """
-        Create a simplified, linearly spaced time axis for the display window.
-        This is an approximation but is much simpler than calculating exact times
-        for min-max decimated points.
+        Creates a relative time axis for the displayed data window, starting from 0.
         """
         time_per_sample = self.sample_interval_ns * 1e-9
-        start_time = self.data_start_sample * time_per_sample
-        # The end time is based on the original number of samples in the window
-        end_time = (self.data_start_sample + len(self.display_data) - 1) * time_per_sample
-        return np.linspace(start_time, end_time, n_samples)
+        # Duration of the original data window before decimation
+        window_duration_s = (len(self.display_data) - 1) * time_per_sample
+        if window_duration_s < 0:
+            window_duration_s = 0
+        return np.linspace(0, window_duration_s, n_samples)
 
     def closeEvent(self, event):
         """Clean shutdown"""
