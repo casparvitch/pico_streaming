@@ -86,6 +86,7 @@ class PicoDevice:
         self.max_sample_count = 0
         self.empty_pro_queue_count = 0
         self.overflow_count = 0
+        self.callback_durations = []
 
         ####### Open device conneciton #######
         status = ps.ps5000aOpenUnit(ctypes.byref(self.handle), None, res)
@@ -213,6 +214,7 @@ class PicoDevice:
             )
 
         if not self.shutdown_event.is_set():
+            callback_start_time = time.perf_counter()
             if noOfSamples > 0:
                 self.captured_samples += noOfSamples
                 len_data = noOfSamples
@@ -243,6 +245,8 @@ class PicoDevice:
                             self.shutdown_event.set()
                             # Break the inner loop; we can't process more data without a buffer.
                             break
+            duration_ms = (time.perf_counter() - callback_start_time) * 1000
+            self.callback_durations.append(duration_ms)
 
     def run_capture(self):
         if not self.streaming_configured:
@@ -256,6 +260,13 @@ class PicoDevice:
             f"Producer couldn't obtain an empty queue {self.empty_pro_queue_count} times."
         )
         logger.info(f"Picoscope hardware overflowed {self.overflow_count} times.")
+        if self.callback_durations:
+            logger.info("--- Callback Performance ---")
+            logger.info(f"Total callbacks: {len(self.callback_durations)}")
+            logger.info(f"Min duration: {min(self.callback_durations):.2f} ms")
+            logger.info(f"Max duration: {max(self.callback_durations):.2f} ms")
+            logger.info(f"Avg duration: {np.mean(self.callback_durations):.2f} ms")
+            logger.info("--------------------------")
         self.close_device()
 
     def close_device(self):
