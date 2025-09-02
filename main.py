@@ -25,7 +25,7 @@ class StreamExample:
         self.enable_live_plot = enable_live_plot
 
         # Consumer buffer settings (for writing to HDF5)
-        self.consumer_buffer_size = 7_500_000  # Samples per buffer
+        self.consumer_buffer_size = 6_400_000  # Samples per buffer
         self.consumer_num_buffers = 5  # Number of buffers
 
         # Picoscope hardware settings

@@ -71,7 +71,9 @@ class Consumer:
                     try:
                         idx = self.data_queue.get(timeout=0.1)
 
-                        dset.resize((self.values_written + (len(self.data_buffers[idx])),))
+                        dset.resize(
+                            (self.values_written + (len(self.data_buffers[idx])),)
+                        )
                         dset[self.values_written :] = self.data_buffers[idx]
                         self.empty_queue.put(idx)
 
