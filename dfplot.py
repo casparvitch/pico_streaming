@@ -120,6 +120,7 @@ class HDF5LivePlotter(QMainWindow):
         self.plot_widget.setLabel("left", "Voltage", "mV")
         self.plot_widget.setLabel("bottom", "Time", "s")
         self.plot_widget.showGrid(x=True, y=True)
+        self.plot_widget.setXRange(0, self.display_window_seconds, padding=0) 
 
         # Plot curve
         self.curve = self.plot_widget.plot(pen="y", width=1)
@@ -315,7 +316,7 @@ class HDF5LivePlotter(QMainWindow):
         time_per_sample = self.sample_interval_ns * 1e-9
         start_time = self.data_start_sample * time_per_sample
         # The end time is based on the original number of samples in the window
-        end_time = (self.data_start_sample + len(self.display_data)) * time_per_sample
+        end_time = (self.data_start_sample + len(self.display_data) - 1) * time_per_sample
         return np.linspace(start_time, end_time, n_samples)
 
     def closeEvent(self, event):
