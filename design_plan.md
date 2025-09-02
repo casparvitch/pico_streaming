@@ -117,6 +117,10 @@ class StreamExample:
 - Statistical analysis overlay
 - Trigger-based data capture
 
+#### 3.3 High-Performance Consumer
+- For sample rates approaching the hardware limit, the Python-based HDF5 consumer may become a bottleneck.
+- Future work could involve rewriting the consumer logic in a compiled language (e.g., C++ with native HDF5 libraries) to maximize I/O throughput and minimize the risk of buffer overflows.
+
 ## Technical Specifications
 
 ### Performance Targets
