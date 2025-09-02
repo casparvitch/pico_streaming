@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import sys
 import time
-import warnings
 import numpy as np
 import h5py
 from loguru import logger
@@ -12,9 +13,11 @@ from PyQt5.QtWidgets import (
     QLabel,
     QHBoxLayout,
 )
-from PyQt5.QtGui import QFont
-from PyQt5.QtCore import QTimer, pyqtSignal, QObject, Qt
+from PyQt5.QtGui import QFont, QKeyEvent, QCloseEvent
+from PyQt5.QtCore import QTimer, Qt
 import pyqtgraph as pg
+from typing import List, Optional
+
 from conversion_utils import adc_to_mV, min_max_decimate_numba
 
 
@@ -26,56 +29,64 @@ class HDF5LivePlotter(QMainWindow):
 
     def __init__(
         self,
-        hdf5_path="/tmp/data.hdf5",
-        update_interval_ms=50,
-        display_window_seconds=0.5,
-        decimation_factor=150,
-    ):
+        hdf5_path: str = "/tmp/data.hdf5",
+        update_interval_ms: int = 50,
+        display_window_seconds: float = 0.5,
+        decimation_factor: int = 150,
+    ) -> None:
+        """Initializes the HDF5LivePlotter window.
+
+        Args:
+            hdf5_path: Path to the HDF5 file to monitor.
+            update_interval_ms: How often to check the file for updates (in ms).
+            display_window_seconds: The time duration of data to display.
+            decimation_factor: The factor by which to decimate data for plotting.
+        """
         super().__init__()
 
-        # Configuration
-        self.hdf5_path = hdf5_path
-        self.update_interval_ms = update_interval_ms
-        self.display_window_seconds = display_window_seconds
-        self.decimation_factor = decimation_factor  # 15M -> 100k display points
+        # --- Configuration ---
+        self.hdf5_path: str = hdf5_path
+        self.update_interval_ms: int = update_interval_ms
+        self.display_window_seconds: float = display_window_seconds
+        self.decimation_factor: int = decimation_factor
 
-        # UI Heartbeat
-        self.heartbeat_chars = ["|", "/", "-", "\\"]
-        self.heartbeat_index = 0
+        # --- UI State ---
+        self.heartbeat_chars: List[str] = ["|", "/", "-", "\\"]
+        self.heartbeat_index: int = 0
 
-        # Data storage
-        self.display_data = np.array([])
-        self.time_data = np.array([])
-        self.data_start_sample = 0  # Track where our display window starts in the file
+        # --- Data Buffers ---
+        self.display_data: np.ndarray = np.array([])
+        self.time_data: np.ndarray = np.array([])
+        self.data_start_sample: int = 0
 
-        # Metadata from HDF5
-        self.sample_interval_ns = 16  # Default, will be read from file
-        self.ch_range = None
-        self.max_adc = None
-        self.voltage_range_v = None
+        # --- HDF5 Metadata ---
+        self.sample_interval_ns: float = 16.0  # Default, will be read from file
+        self.ch_range: Optional[int] = None
+        self.max_adc: Optional[int] = None
+        self.voltage_range_v: Optional[float] = None
 
-        # Debug counters
-        self.update_count = 0
-        self.file_read_count = 0
-        self.display_update_count = 0
+        # --- Debug Counters ---
+        self.update_count: int = 0
+        self.file_read_count: int = 0
+        self.display_update_count: int = 0
 
-        # Performance monitoring
-        self.display_latency_ms = 0.0
-        self.last_data_timestamp = None
+        # --- Performance Monitoring ---
+        self.display_latency_ms: float = 0.0
+        self.last_data_timestamp: Optional[float] = None
 
-        # Rate checking
-        self.rate_check_start_time = None
-        self.rate_check_start_samples = 0
+        # --- Rate Checking ---
+        self.rate_check_start_time: Optional[float] = None
+        self.rate_check_start_samples: int = 0
 
-        # Data freshness tracking
-        self.last_displayed_size = 0
-        self.data_change_count = 0
-        self.stale_update_count = 0
-        self.last_freshness_check = time.time()
+        # --- Data Freshness Tracking ---
+        self.last_displayed_size: int = 0
+        self.data_change_count: int = 0
+        self.stale_update_count: int = 0
+        self.last_freshness_check: float = time.time()
 
-        # Error tracking
-        self.conversion_error_count = 0
-        self.file_error_count = 0
+        # --- Error Tracking ---
+        self.conversion_error_count: int = 0
+        self.file_error_count: int = 0
 
         # Setup UI
         self.setup_ui()
@@ -92,8 +103,8 @@ class HDF5LivePlotter(QMainWindow):
         # Initial file check
         self.check_file_exists()
 
-    def setup_ui(self):
-        """Setup the oscilloscope-style UI"""
+    def setup_ui(self) -> None:
+        """Sets up the main window, widgets, and plot layout."""
         self.setWindowTitle("PicoScope Live Plotter - HDF5 Reader")
         self.setGeometry(100, 100, 1200, 800)
 
@@ -156,8 +167,8 @@ class HDF5LivePlotter(QMainWindow):
         self.plot_widget.setDownsampling(mode="peak")
         self.plot_widget.setClipToView(True)
 
-    def check_file_exists(self):
-        """Check if HDF5 file exists and is readable"""
+    def check_file_exists(self) -> None:
+        """Checks if the HDF5 file exists and attempts to read metadata."""
         try:
             with h5py.File(self.hdf5_path, "r") as f:
                 if "adc_counts" in f:
@@ -174,8 +185,12 @@ class HDF5LivePlotter(QMainWindow):
                 '<span style="color: orange">Acquisition: Waiting for file...</span>'
             )
 
-    def read_metadata(self, hdf5_file):
-        """Read metadata from HDF5 file"""
+    def read_metadata(self, hdf5_file: h5py.File) -> None:
+        """Reads metadata attributes from the root of an open HDF5 file.
+
+        Args:
+            hdf5_file: An open h5py.File object.
+        """
         try:
             # Metadata is stored as root-level attributes
             self.sample_interval_ns = hdf5_file.attrs.get("sample_interval_ns", 16)
@@ -190,8 +205,8 @@ class HDF5LivePlotter(QMainWindow):
         except Exception as e:
             logger.warning(f"Could not read metadata: {e}")
 
-    def update_from_file(self):
-        """Periodically read the latest window of data from the HDF5 file."""
+    def update_from_file(self) -> None:
+        """Timer-driven function to read data from the HDF5 file and update the plot."""
         self.update_count += 1
 
         # Update UI heartbeat to show the UI thread is alive
@@ -321,8 +336,14 @@ class HDF5LivePlotter(QMainWindow):
                 f'<span style="color: red">Acquisition: File error!</span>'
             )
 
-    def update_display(self, data_window):
-        """Update the oscilloscope display with a full window of data."""
+    def update_display(self, data_window: np.ndarray) -> None:
+        """Processes and displays a new window of data.
+
+        This involves decimation, voltage conversion, and updating the plot curve.
+
+        Args:
+            data_window: A NumPy array containing the raw ADC counts for display.
+        """
         if len(data_window) == 0:
             return
 
@@ -388,8 +409,8 @@ class HDF5LivePlotter(QMainWindow):
         if self.display_update_count % 10 == 1:
             self.plot_widget.enableAutoRange(axis="y")
 
-    def _format_rate_sps(self, rate_sps):
-        """Formats a sample rate in S/s to a human-readable string."""
+    def _format_rate_sps(self, rate_sps: float) -> str:
+        """Formats a sample rate in Samples/sec into a human-readable string."""
         if rate_sps >= 1e9:
             return f"{rate_sps / 1e9:.2f} GS/s"
         if rate_sps >= 1e6:
@@ -398,8 +419,15 @@ class HDF5LivePlotter(QMainWindow):
             return f"{rate_sps / 1e3:.2f} kS/s"
         return f"{rate_sps:.2f} S/s"
 
-    def format_sample_count(self, count):
-        """Format large sample counts with appropriate units"""
+    def format_sample_count(self, count: int) -> str:
+        """Formats a large integer count into a human-readable string with units.
+
+        Args:
+            count: The integer number to format.
+
+        Returns:
+            A formatted string (e.g., "1.2M", "2.3G").
+        """
         if count >= 1_000_000_000:
             return f"{count / 1_000_000_000:.1f}G"
         elif count >= 1_000_000:
@@ -409,10 +437,18 @@ class HDF5LivePlotter(QMainWindow):
         else:
             return str(count)
 
-    def create_time_axis(self, n_samples):
-        """
-        Creates an absolute time axis for the displayed data window based on its
-        start position in the acquisition.
+    def create_time_axis(self, n_samples: int) -> np.ndarray:
+        """Creates a time axis for the displayed data window.
+
+        The time axis is absolute, based on the data window's start position
+        in the overall acquisition.
+
+        Args:
+            n_samples: The number of points for the time axis. This should be
+                the number of points *after* decimation.
+
+        Returns:
+            A NumPy array representing the time axis in seconds.
         """
         time_per_sample = self.sample_interval_ns * 1e-9
         start_time = self.data_start_sample * time_per_sample
@@ -426,13 +462,14 @@ class HDF5LivePlotter(QMainWindow):
 
         return np.linspace(start_time, end_time, n_samples)
 
-    def closeEvent(self, event):
-        """Clean shutdown"""
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """Handles the window close event for a clean shutdown."""
+        logger.info("Close event received. Stopping timer.")
         self.timer.stop()
         event.accept()
 
-    def keyPressEvent(self, event):
-        """Handle key presses."""
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """Handles key presses for application control (e.g., 'Q' to quit)."""
         if event.key() == Qt.Key_Q:
             logger.info("'Q' key pressed. Closing application.")
             self.close()
@@ -440,8 +477,8 @@ class HDF5LivePlotter(QMainWindow):
             super().keyPressEvent(event)
 
 
-def main():
-    """Standalone application entry point"""
+def main() -> None:
+    """Standalone application entry point."""
     app = QApplication(sys.argv)
 
     # Command line argument for HDF5 file path
