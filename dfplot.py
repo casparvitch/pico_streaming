@@ -208,7 +208,7 @@ class HDF5LivePlotter(QMainWindow):
                     self.data_change_count += 1
                     self.last_displayed_size = current_size
                     self.last_data_timestamp = current_time
-                    self.acq_status_label.setText('<span style="color: lightgreen">Acquisition: Active</span>')
+                    self.acq_status_label.setText('<span style="color: green">Acquisition: Active</span>')
 
                     # Read only the most recent data window
                     data_window = dataset[start_index:current_size]
