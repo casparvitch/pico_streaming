@@ -256,8 +256,16 @@ class HDF5LivePlotter(QMainWindow):
             f"time range: {time_axis[0]:.3f}s to {time_axis[-1]:.3f}s"
         )
 
+        # Calculate display latency
+        if self.last_data_timestamp:
+            self.display_latency_ms = (time.time() - self.last_data_timestamp) * 1000
+
         # Update plot
         self.curve.setData(time_axis, voltage_data)
+
+        # Update plot title with counters for feedback
+        title = f"Channel A - File reads: {self.file_read_count}, Plot updates: {self.display_update_count}"
+        self.plot_widget.setTitle(title)
 
         # Manually set the X-axis range to follow the data, creating a scroll effect.
         self.plot_widget.setXRange(time_axis[0], time_axis[-1], padding=0)
