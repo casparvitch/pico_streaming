@@ -14,8 +14,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QTimer, pyqtSignal, QObject
 import pyqtgraph as pg
-from picosdk.functions import adc2mV
-from picosdk.ps5000a import ps5000a as ps
+from conversion_utils import adc_to_mV
 
 
 class HDF5LivePlotter(QMainWindow):
@@ -42,6 +41,7 @@ class HDF5LivePlotter(QMainWindow):
         self.sample_interval_ns = 16  # Default, will be read from file
         self.ch_range = None
         self.max_adc = None
+        self.voltage_range_v = None
 
         # Debug counters
         self.update_count = 0
@@ -122,6 +122,7 @@ class HDF5LivePlotter(QMainWindow):
                 self.sample_interval_ns = metadata.attrs.get("timeIntervalns", 16)
                 self.ch_range = metadata.attrs.get("chARange", None)
                 self.max_adc = metadata.attrs.get("maxADC", None)
+                self.voltage_range_v = metadata.attrs.get("chAVoltageRange", 20.0)
         except Exception as e:
             logger.warning(f"Could not read metadata: {e}")
 
@@ -140,7 +141,7 @@ class HDF5LivePlotter(QMainWindow):
                     return
 
                 # Read metadata if not already done
-                if self.ch_range is None:
+                if self.voltage_range_v is None:
                     self.read_metadata(f)
 
                 # Calculate where to start reading to get the last window
@@ -201,20 +202,18 @@ class HDF5LivePlotter(QMainWindow):
 
         # Debug: Log ADC values and metadata
         logger.debug(f"ADC range: {decimated_data.min()} to {decimated_data.max()}")
-        logger.debug(f"ch_range: {self.ch_range}, max_adc: {self.max_adc}")
+        logger.debug(f"voltage_range_v: {self.voltage_range_v}, max_adc: {self.max_adc}")
 
         # Convert to voltage if we have calibration data
-        if self.ch_range is not None and self.max_adc is not None:
+        if self.voltage_range_v is not None and self.max_adc is not None:
             try:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("error")
-                    voltage_data = adc2mV(decimated_data, self.ch_range, self.max_adc)
+                voltage_data = adc_to_mV(decimated_data, self.voltage_range_v, self.max_adc)
                 logger.debug(f"Voltage conversion successful, range: {voltage_data.min():.1f} to {voltage_data.max():.1f} mV")
-            except (RuntimeWarning, Exception) as e:
+            except Exception as e:
                 logger.warning(f"Voltage conversion failed: {e}, using raw ADC values")
                 voltage_data = decimated_data.astype(float)
         else:
-            logger.warning("Missing calibration data (ch_range or max_adc), using raw ADC values")
+            logger.warning("Missing calibration data (voltage_range_v or max_adc), using raw ADC values")
             voltage_data = decimated_data.astype(float)
 
         # Create time axis for the current window

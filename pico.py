@@ -139,7 +139,8 @@ class PicoDevice:
         return {
             "cmaxSamples": self.total_samples,
             "timeIntervalns": self.sample_int.value,
-            "chARange": self.channel_range,
+            "chARange": self.channel_range,  # Keep for compatibility
+            "chAVoltageRange": self.voltage_range_v,  # New: actual voltage range
             "maxADC": self.max_adc.value,
         }
 

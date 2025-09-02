@@ -19,6 +19,7 @@ class Consumer:
         timeIntervalns,
         chARange,
         maxADC,
+        chAVoltageRange=20.0,  # Default to 20V for backward compatibility
     ):
         self.buffer_size = buffer_size
         self.data_queue = data_queue
@@ -33,6 +34,7 @@ class Consumer:
         self.timeIntervalns = timeIntervalns
         self.chARange = chARange
         self.maxADC = maxADC
+        self.chAVoltageRange = chAVoltageRange
 
         self.empty_con_queue_count = 0
 
@@ -43,6 +45,7 @@ class Consumer:
             "timeIntervalns": self.timeIntervalns,
             "chARange": self.chARange,
             "maxADC": self.maxADC,
+            "chAVoltageRange": self.chAVoltageRange,
         }
 
         try:
