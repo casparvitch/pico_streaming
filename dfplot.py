@@ -121,7 +121,7 @@ class HDF5LivePlotter(QMainWindow):
         self.plotter_latency_label = QLabel("Plotter Latency: 0 ms")
         self.error_label = QLabel("Errors: 0")
         self.acq_status_label = QLabel(
-            '<span style="color: orange">Acquisition: Waiting for file...</span>'
+            '<span style="color: orange">Waiting for file...</span>'
         )
         font = QFont()
         font.setFamily("Monospace")
@@ -139,15 +139,15 @@ class HDF5LivePlotter(QMainWindow):
         # Add separators between status items
         status_layout.addWidget(self.heartbeat_label)
         status_layout.addWidget(QLabel(" | "))
-        status_layout.addWidget(self.acq_status_label)
+        status_layout.addWidget(self.error_label)
         status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.samples_label)
         status_layout.addWidget(QLabel(" | "))
-        status_layout.addWidget(self.rate_label)
-        status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.plotter_latency_label)
         status_layout.addWidget(QLabel(" | "))
-        status_layout.addWidget(self.error_label)
+        status_layout.addWidget(self.rate_label)
+        status_layout.addWidget(QLabel(" | "))
+        status_layout.addWidget(self.acq_status_label)
         status_layout.addStretch()
         layout.addLayout(status_layout)
 
@@ -173,16 +173,16 @@ class HDF5LivePlotter(QMainWindow):
             with h5py.File(self.hdf5_path, "r") as f:
                 if "adc_counts" in f:
                     self.acq_status_label.setText(
-                        '<span style="color: orange">Acquisition: Reading metadata...</span>'
+                        '<span style="color: orange">Reading metadata...</span>'
                     )
                     self.read_metadata(f)
                 else:
                     self.acq_status_label.setText(
-                        '<span style="color: orange">Acquisition: Waiting for data...</span>'
+                        '<span style="color: orange">Waiting for data...</span>'
                     )
         except (FileNotFoundError, OSError):
             self.acq_status_label.setText(
-                '<span style="color: orange">Acquisition: Waiting for file...</span>'
+                '<span style="color: orange">Waiting for file...</span>'
             )
 
     def read_metadata(self, hdf5_file: h5py.File) -> None:
@@ -220,7 +220,7 @@ class HDF5LivePlotter(QMainWindow):
         self.last_displayed_size = current_size
         self.last_data_timestamp = time.time()
         self.acq_status_label.setText(
-            '<span style="color: green">Acquisition: Active</span>'
+            '<span style="color: green">Active</span>'
         )
 
         # Read only the most recent data window
@@ -238,7 +238,7 @@ class HDF5LivePlotter(QMainWindow):
         """Handle a file check where no new data is found."""
         self.stale_update_count += 1
         self.acq_status_label.setText(
-            '<span style="color: orange">Acquisition: Acquiring...</span>'
+            '<span style="color: orange">Acquiring... </span>'
         )
         # Log if we're frequently updating with no new data
         if self.stale_update_count % 10 == 0:
@@ -291,7 +291,7 @@ class HDF5LivePlotter(QMainWindow):
             rate_text = f"Rate: {actual_rate_str} / {configured_rate_str}"
             if rate_ratio < 0.95:
                 self.rate_label.setText(
-                    f'<span style="color: red">{rate_text} (LOW!)</span>'
+                    f'<span style="color: red">{rate_text}</span>'
                 )
             else:
                 self.rate_label.setText(rate_text)
@@ -344,13 +344,13 @@ class HDF5LivePlotter(QMainWindow):
                 self._process_data_from_file(f)
         except (FileNotFoundError, OSError):
             self.acq_status_label.setText(
-                '<span style="color: orange">Acquisition: Waiting for file...</span>'
+                '<span style="color: orange">Waiting for file...</span>'
             )
         except Exception as e:
             self.file_error_count += 1
             logger.error(f"Update {self.update_count}: Error reading file - {e}")
             self.acq_status_label.setText(
-                f'<span style="color: red">Acquisition: File error!</span>'
+                f'<span style="color: red">File error!</span>'
             )
 
     def update_display(self, data_window: np.ndarray) -> None:
