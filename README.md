@@ -120,7 +120,3 @@ with h5py.File('my_data.hdf5', 'r') as f:
 -   `PyQt5`: GUI framework
 -   `loguru`: Clean and simple logging
 -   `numba`: JIT compiler for performance-critical functions
-
-## License
-
-This project interfaces with PicoScope hardware using the official PicoSDK. Ensure you have appropriate licenses for PicoScope software and hardware.
