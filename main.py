@@ -302,21 +302,29 @@ if __name__ == "__main__":
 
     logger.info(f"Output file: {args.output}")
 
-    # Create and run the streamer
-    streamer = StreamExample(
-        sample_rate_msps=args.rate,
-        enable_live_plot=args.plot,
-        output_file=args.output,
-        debug=args.verbose,
-        plot_window_s=args.plot_window,
-        decimation_factor=args.dec_fac,
-    )
-    streamer.run()
+    try:
+        # Create and run the streamer
+        streamer = StreamExample(
+            sample_rate_msps=args.rate,
+            enable_live_plot=args.plot,
+            output_file=args.output,
+            debug=args.verbose,
+            plot_window_s=args.plot_window,
+            decimation_factor=args.dec_fac,
+        )
+        streamer.run()
+    except RuntimeError as e:
+        if "PICO_NOT_FOUND" in str(e):
+            logger.critical(
+                "Picoscope device not found. Please check connection and ensure no other software is using it."
+            )
+        else:
+            logger.critical(f"Failed to initialize Picoscope: {e}")
+        sys.exit(1)
 
     # --- Verification Step ---
     logger.info(f"Verifying output file: {args.output}")
     try:
-
         expected_samples = streamer.consumer.values_written
         if expected_samples == 0:
             logger.warning("Consumer processed no samples. Nothing to verify.")
