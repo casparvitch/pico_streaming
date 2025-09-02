@@ -177,12 +177,11 @@ class HDF5LivePlotter(QMainWindow):
     def read_metadata(self, hdf5_file):
         """Read metadata from HDF5 file"""
         try:
-            if "metadata" in hdf5_file:
-                metadata = hdf5_file["metadata"]
-                self.sample_interval_ns = metadata.attrs.get("timeIntervalns", 16)
-                self.ch_range = metadata.attrs.get("chARange", None)
-                self.max_adc = metadata.attrs.get("maxADC", None)
-                self.voltage_range_v = metadata.attrs.get("chAVoltageRange", 20.0)
+            # Metadata is stored as root-level attributes
+            self.sample_interval_ns = hdf5_file.attrs.get("sample_interval_ns", 16)
+            self.max_adc = hdf5_file.attrs.get("max_adc", None)
+            self.voltage_range_v = hdf5_file.attrs.get("voltage_range_v", None)
+
             # Update rate label with configured sample rate
             configured_rate_sps = 1e9 / self.sample_interval_ns
             self.rate_label.setText(
