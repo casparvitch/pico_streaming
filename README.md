@@ -4,16 +4,14 @@ A high-performance, multi-threaded application for streaming data from a PicoSco
 
 ## Features
 
-- **High-Speed Streaming**: Captures data at the maximum rate supported by the hardware (e.g., 62.5 MS/s on a PicoScope 5000a series at 12-bit resolution). The rate is configurable.
 - **Robust Producer-Consumer Architecture**: Separates data acquisition from disk I/O using a large, shared memory buffer pool to prevent data loss.
 - **Zero-Risk Live Plotting**: The plotter reads from the HDF5 file, not the live data stream. This ensures that a slow or crashing GUI cannot interfere with data acquisition.
 - **Efficient Visualization**: Uses `pyqtgraph` and a Numba-accelerated min-max decimation algorithm to display large datasets with minimal CPU impact.
-- **Graceful Shutdown**: Captures `Ctrl+C` to cleanly stop all threads, flush data to disk, and close the device.
 
 ## System Architecture
 
 ```
-PicoScope → pico.py (Producer) → Data Buffers → consumer.py (Consumer) → /tmp/data.hdf5
+PicoScope → pico.py (Producer) → Data Buffers → consumer.py (Consumer) → /data.hdf5
                                                                               ↓
                                                                       dfplot.py (Plotter) → Real-time Display
 ```
