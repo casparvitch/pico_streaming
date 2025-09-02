@@ -97,7 +97,7 @@ class StreamExample:
             data_buffers,
             output_file,
             self.shutdown_event,
-            **metadata,
+            metadata=metadata,
         )
 
         self.consumer_thread = threading.Thread(target=self.consumer.consume)

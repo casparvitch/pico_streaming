@@ -15,11 +15,7 @@ class Consumer:
         data_buffers,
         file_name,
         shutdown_event,
-        cmaxSamples,
-        timeIntervalns,
-        chARange,
-        maxADC,
-        chAVoltageRange=20.0,  # Default to 20V for backward compatibility
+        metadata,
     ):
         self.buffer_size = buffer_size
         self.data_queue = data_queue
@@ -27,15 +23,9 @@ class Consumer:
         self.data_buffers = data_buffers
         self.file_name = file_name
         self.shutdown_event = shutdown_event
+        self.metadata = metadata
 
         self.values_written = 0
-
-        self.cmaxSamples = cmaxSamples
-        self.timeIntervalns = timeIntervalns
-        self.chARange = chARange
-        self.maxADC = maxADC
-        self.chAVoltageRange = chAVoltageRange
-
         self.empty_con_queue_count = 0
 
     def format_sample_count(self, count):
@@ -51,14 +41,6 @@ class Consumer:
 
     def consume(self):
         total_save_length = 0
-        metadata = {
-            "cmaxSamples": self.cmaxSamples,
-            "timeIntervalns": self.timeIntervalns,
-            "chARange": self.chARange,
-            "maxADC": self.maxADC,
-            "chAVoltageRange": self.chAVoltageRange,
-        }
-
         try:
             # Force overwrite of existing file
             if os.path.exists(self.file_name):
@@ -66,9 +48,10 @@ class Consumer:
                 logger.info(f"Removed existing file: {self.file_name}")
 
             with h5py.File(self.file_name, "w") as f:
-                metadata_group = f.create_group("metadata")
-                for key, value in metadata.items():
-                    metadata_group.attrs[key] = value
+                # Store metadata as root-level attributes
+                for key, value in self.metadata.items():
+                    if value is not None:
+                        f.attrs[key] = value
 
                 dset = f.create_dataset(
                     "adc_counts",

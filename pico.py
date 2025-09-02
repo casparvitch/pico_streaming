@@ -33,6 +33,7 @@ class PicoDevice:
     ):
         ####### Setup variables #######
         self.handle = ctypes.c_int16(handle)
+        self.resolution = resolution
         res = ps.PS5000A_DEVICE_RESOLUTION[resolution]
 
         ####### Local picoscope buffer variables #######
@@ -51,6 +52,9 @@ class PicoDevice:
         self.channel_range = None
         self.max_adc = ctypes.c_int16()
         self.shutdown_event = shutdown_event
+
+        self.channel_a_coupling = None
+        self.channel_a_range_str = None
         ####### Callback Function Variables #######
 
         self.nextSample = 0
@@ -113,6 +117,10 @@ class PicoDevice:
         }
         self.voltage_range_v = range_to_voltage.get(range, 20.0)  # Default to 20V
 
+        if chan == "PS5000A_CHANNEL_A" and en:
+            self.channel_a_coupling = coup
+            self.channel_a_range_str = range
+
         channel = ps.PS5000A_CHANNEL[chan]
         coupling = ps.PS5000A_COUPLING[coup]
         status = ps.ps5000aSetChannel(
@@ -160,11 +168,12 @@ class PicoDevice:
     def get_metadata(self):
         """Returns a dictionary of acquisition parameters for the HDF5 file."""
         return {
-            "cmaxSamples": self.total_samples,
-            "timeIntervalns": self.sample_int.value,
-            "chARange": self.channel_range,  # Keep for compatibility
-            "chAVoltageRange": self.voltage_range_v,  # New: actual voltage range
-            "maxADC": self.max_adc.value,
+            "resolution": self.resolution,
+            "sample_interval_ns": self.sample_int.value,
+            "voltage_range_v": self.voltage_range_v,
+            "max_adc_value": self.max_adc.value,
+            "channel_a_coupling": self.channel_a_coupling,
+            "channel_a_range": self.channel_a_range_str,
         }
 
     def run_streaming(self):
