@@ -460,14 +460,14 @@ class HDF5LivePlotter(QMainWindow):
             count: The integer number to format.
 
         Returns:
-            A formatted string (e.g., "1.2M", "2.3G").
+            A formatted string (e.g., "1.23M", "2.34G").
         """
         if count >= 1_000_000_000:
-            return f"{count / 1_000_000_000:.1f}G"
+            return f"{count / 1_000_000_000:.2f}G"
         if count >= 1_000_000:
-            return f"{count / 1_000_000:.1f}M"
+            return f"{count / 1_000_000:.2f}M"
         if count >= 1_000:
-            return f"{count / 1_000:.1f}K"
+            return f"{count / 1_000:.2f}K"
         else:
             return str(count)
 
@@ -505,14 +505,20 @@ class HDF5LivePlotter(QMainWindow):
             group_times = start_time + np.arange(num_pairs) * time_step_between_groups
             return np.repeat(group_times, 2)
         else:
-            # For non-decimated data, create a linear time axis
-            duration = (
-                (n_samples - points_per_timestep) * time_per_point
-                if n_samples > 1
-                else 0
-            )
-            end_time = start_time + duration
-            return np.linspace(start_time, end_time, n_samples)
+            # For non-decimated data
+            if self.downsample_mode == "aggregate":
+                # Data is already min/max pairs from hardware. Create vertical lines.
+                num_pairs = n_samples // 2
+                time_step_between_pairs = time_per_timestep
+                pair_times = start_time + np.arange(num_pairs) * time_step_between_pairs
+                return np.repeat(pair_times, 2)
+            else:
+                # For linear (non-aggregate) data, create a simple time axis
+                duration = (
+                    (n_samples - 1) * time_per_point if n_samples > 1 else 0
+                )
+                end_time = start_time + duration
+                return np.linspace(start_time, end_time, n_samples)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """Handles the window close event for a clean shutdown."""
