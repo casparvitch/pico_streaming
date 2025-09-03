@@ -38,9 +38,6 @@ class StreamExample:
         self.debug = debug
         self.enable_live_plot = enable_live_plot
 
-        # Consumer buffer settings (for writing to HDF5)
-        self.consumer_buffer_size = 10_000_000  # Samples per buffer
-        self.consumer_num_buffers = 5  # Number of buffers
 
         # --- Validate configuration ---
         max_rate_msps = 0
@@ -82,16 +79,40 @@ class StreamExample:
                     f"analog bandwidth of {bandwidth_mhz} MHz."
                 )
 
+        # --- Buffer Sizing ---
+        # Dynamically size buffers to hold a specific duration of data. This makes
+        # memory usage proportional to the data rate, providing a consistent
+        # time-based buffer to handle processing latencies.
+
+        # Consumer buffers (for writing to HDF5) are sized to hold 1 second of data.
+        # This is a good balance, as larger buffers lead to more efficient disk writes
+        # but use more RAM.
+        consumer_buffer_duration_s = 1.0
+        self.consumer_buffer_size = int(sample_rate_msps * 1e6 * consumer_buffer_duration_s)
+        self.consumer_num_buffers = 5  # A pool of 5 buffers
+
+        # The Picoscope driver buffer is sized to hold 0.5 seconds of data. This
+        # buffer receives data directly from the hardware. A smaller size ensures
+        # that the application receives data in timely chunks, reducing latency.
+        driver_buffer_duration_s = 0.5
+        self.pico_driver_buffer_size = int(sample_rate_msps * 1e6 * driver_buffer_duration_s)
+        self.pico_driver_num_buffers = 1  # A single large buffer is efficient for the driver
+
+        logger.info(
+            f"Consumer buffer sized to {self.consumer_buffer_size:,} samples "
+            f"({consumer_buffer_duration_s}s)"
+        )
+        logger.info(
+            f"Pico driver buffer sized to {self.pico_driver_buffer_size:,} samples "
+            f"({driver_buffer_duration_s}s)"
+        )
+
         # Picoscope hardware settings
         self.pico_resolution = f"PS5000A_DR_{resolution_bits}BIT"
         self.pico_channel_range = channel_range_str
         self.pico_sample_interval_ns = int(1000 / sample_rate_msps)
         self.pico_sample_unit = "PS5000A_NS"
 
-        # TODO how can we rationally pick the buffer size(s)?? why 1?
-        # Picoscope driver buffer settings (internal to the driver)
-        self.pico_driver_buffer_size = 10_000_000  # Samples
-        self.pico_driver_num_buffers = 1
 
         # Streaming settings
         self.pico_auto_stop = 0  # Don't auto stop
