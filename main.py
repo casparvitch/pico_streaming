@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import queue
 import signal
+import sys
 import threading
 import time
-import numpy as np
-import sys
-from loguru import logger
-import h5py
 from typing import List, Optional
+
+import h5py
+import numpy as np
+from loguru import logger
 
 from consumer import Consumer
 from pico import PicoDevice
@@ -186,6 +187,7 @@ class StreamExample:  # TODO we should rename this something like Streamer?
         if self.enable_live_plot:
             # Import Qt components only when needed
             from PyQt5.QtWidgets import QApplication
+
             from dfplot import HDF5LivePlotter
 
             # Create Qt application if it doesn't exist
