@@ -40,7 +40,6 @@ class StreamExample:
         self.debug = debug
         self.enable_live_plot = enable_live_plot
 
-
         # --- Validate configuration ---
         max_rate_msps = 0
         if resolution_bits == 8:
@@ -64,11 +63,20 @@ class StreamExample:
 
         # Check if sample rate is excessive for the analog bandwidth of the selected range
         ANALOG_BANDWIDTH_MHZ = {
-            "PS5000A_10MV": 200, "PS5000A_20MV": 200, "PS5000A_50MV": 200,
-            "PS5000A_100MV": 200, "PS5000A_200MV": 200, "PS5000A_500MV": 200,
-            "PS5000A_1V": 200, "PS5000A_2V": 150, "PS5000A_5V": 100,
-            "PS5000A_10V": 50, "PS5000A_20V": 25, "PS5000A_50V": 25,
-            "PS5000A_100V": 25, "PS5000A_200V": 25,
+            "PS5000A_10MV": 200,
+            "PS5000A_20MV": 200,
+            "PS5000A_50MV": 200,
+            "PS5000A_100MV": 200,
+            "PS5000A_200MV": 200,
+            "PS5000A_500MV": 200,
+            "PS5000A_1V": 200,
+            "PS5000A_2V": 150,
+            "PS5000A_5V": 100,
+            "PS5000A_10V": 50,
+            "PS5000A_20V": 25,
+            "PS5000A_50V": 25,
+            "PS5000A_100V": 25,
+            "PS5000A_200V": 25,
         }
         if channel_range_str in ANALOG_BANDWIDTH_MHZ:
             bandwidth_mhz = ANALOG_BANDWIDTH_MHZ[channel_range_str]
@@ -91,15 +99,21 @@ class StreamExample:
         # but use more RAM. Note: This is sized based on the pre-downsample rate,
         # making it a safe upper bound.
         consumer_buffer_duration_s = 1.0
-        self.consumer_buffer_size = int(sample_rate_msps * 1e6 * consumer_buffer_duration_s)
+        self.consumer_buffer_size = int(
+            sample_rate_msps * 1e6 * consumer_buffer_duration_s
+        )
         self.consumer_num_buffers = 5  # A pool of 5 buffers
 
         # The Picoscope driver buffer is sized to hold 0.5 seconds of data. This
         # buffer receives data directly from the hardware. A smaller size ensures
         # that the application receives data in timely chunks, reducing latency.
         driver_buffer_duration_s = 0.5
-        self.pico_driver_buffer_size = int(sample_rate_msps * 1e6 * driver_buffer_duration_s)
-        self.pico_driver_num_buffers = 1  # A single large buffer is efficient for the driver
+        self.pico_driver_buffer_size = int(
+            sample_rate_msps * 1e6 * driver_buffer_duration_s
+        )
+        self.pico_driver_num_buffers = (
+            1  # A single large buffer is efficient for the driver
+        )
 
         logger.info(
             f"Consumer buffer sized to {self.consumer_buffer_size:,} samples "
@@ -126,9 +140,10 @@ class StreamExample:
 
         # --- Hardware Down-sampling ---
         if hardware_downsample > 1:
-            if downsample_mode == "average" and (
-                hardware_downsample & (hardware_downsample - 1)
-            ) != 0:
+            if (
+                downsample_mode == "average"
+                and (hardware_downsample & (hardware_downsample - 1)) != 0
+            ):
                 raise ValueError(
                     "Hardware downsample ratio must be a power of two for 'average' mode."
                 )
@@ -147,7 +162,6 @@ class StreamExample:
         self.pico_channel_range = channel_range_str
         self.pico_sample_interval_ns = int(1000 / sample_rate_msps)
         self.pico_sample_unit = "PS5000A_NS"
-
 
         # Streaming settings
         self.pico_auto_stop = 0  # Don't auto stop
@@ -370,10 +384,20 @@ if __name__ == "__main__":
         help="Resolution in bits (default: 12).",
     )
     voltage_ranges = [
-        "PS5000A_10MV", "PS5000A_20MV", "PS5000A_50MV", "PS5000A_100MV",
-        "PS5000A_200MV", "PS5000A_500MV", "PS5000A_1V", "PS5000A_2V",
-        "PS5000A_5V", "PS5000A_10V", "PS5000A_20V", "PS5000A_50V",
-        "PS5000A_100V", "PS5000A_200V"
+        "PS5000A_10MV",
+        "PS5000A_20MV",
+        "PS5000A_50MV",
+        "PS5000A_100MV",
+        "PS5000A_200MV",
+        "PS5000A_500MV",
+        "PS5000A_1V",
+        "PS5000A_2V",
+        "PS5000A_5V",
+        "PS5000A_10V",
+        "PS5000A_20V",
+        "PS5000A_50V",
+        "PS5000A_100V",
+        "PS5000A_200V",
     ]
     parser.add_argument(
         "--range",
@@ -389,7 +413,9 @@ if __name__ == "__main__":
         help="Enable live plotting (requires PyQt5 and pyqtgraph, default: true).",
     )
     parser.add_argument(
-        "--output", "-o", help="Output HDF5 file (default: auto-timestamped as ./output_{}.hdf5)."
+        "--output",
+        "-o",
+        help="Output HDF5 file (default: auto-timestamped as ./output_{}.hdf5).",
     )
     parser.add_argument(
         "--plot-window",

@@ -28,7 +28,9 @@ def check_status(status: int, function_name: str) -> None:
         error_name = next(
             (k for k, v in PICO_STATUS.items() if v == status), "PICO_UNKNOWN_ERROR"
         )
-        raise RuntimeError(f"{function_name} failed with status {status} ({error_name})")
+        raise RuntimeError(
+            f"{function_name} failed with status {status} ({error_name})"
+        )
 
 
 class PicoDevice:
@@ -193,9 +195,7 @@ class PicoDevice:
 
         buffer_min_ptr = None
         if self.bufferB is not None:
-            buffer_min_ptr = self.bufferB.ctypes.data_as(
-                ctypes.POINTER(ctypes.c_int16)
-            )
+            buffer_min_ptr = self.bufferB.ctypes.data_as(ctypes.POINTER(ctypes.c_int16))
 
         status = ps.ps5000aSetDataBuffers(
             self.handle,

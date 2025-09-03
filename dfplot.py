@@ -221,9 +221,7 @@ class HDF5LivePlotter(QMainWindow):
         self.data_change_count += 1
         self.last_displayed_size = current_size
         self.last_data_timestamp = time.time()
-        self.acq_status_label.setText(
-            '<span style="color: green">Active</span>'
-        )
+        self.acq_status_label.setText('<span style="color: green">Active</span>')
 
         # Read only the most recent data window
         data_window = dataset[start_index:current_size]
@@ -267,9 +265,7 @@ class HDF5LivePlotter(QMainWindow):
         # Error counter
         total_errors = self.conversion_error_count + self.file_error_count
         error_color = (
-            "green"
-            if total_errors == 0
-            else "orange" if total_errors < 10 else "red"
+            "green" if total_errors == 0 else "orange" if total_errors < 10 else "red"
         )
         self.error_label.setText(
             f'<span style="color: {error_color}">Errors: {total_errors}</span>'
@@ -292,9 +288,7 @@ class HDF5LivePlotter(QMainWindow):
 
             rate_text = f"Rate: {actual_rate_str} : {configured_rate_str}"
             if rate_ratio < 0.95:
-                self.rate_label.setText(
-                    f'<span style="color: red">{rate_text}</span>'
-                )
+                self.rate_label.setText(f'<span style="color: red">{rate_text}</span>')
             else:
                 self.rate_label.setText(rate_text)
 
