@@ -444,8 +444,6 @@ class PicoDevice:
             )
             logger.info("----------------------------------")
 
-        self.close_device()
-
     def close_device(self) -> None:
         """Stops the Picoscope and closes the connection."""
         # Check if handle is valid before trying to close.

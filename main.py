@@ -247,7 +247,7 @@ class Streamer:
             pico_ratio_mode = f"PS5000A_RATIO_MODE_{downsample_mode.upper()}"
             logger.info(
                 f"Hardware down-sampling ({downsample_mode}) enabled "
-                + "with ratio {pico_downsample_ratio}."
+                + f"with ratio {pico_downsample_ratio}."
             )
         else:
             pico_downsample_ratio = 1
