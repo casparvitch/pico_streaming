@@ -1,16 +1,15 @@
 from __future__ import annotations
 
 import ctypes
-import time
-import numpy as np
 import queue
 import threading
-from typing import List, Dict, Any, Optional
+import time
+from typing import Any, Dict, List, Optional
 
+import numpy as np
 from loguru import logger
-
-from picosdk.ps5000a import ps5000a as ps
 from picosdk.functions import PICO_STATUS
+from picosdk.ps5000a import ps5000a as ps
 
 
 def check_status(status: int, function_name: str) -> None:

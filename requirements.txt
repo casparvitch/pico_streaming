@@ -1,8 +1,0 @@
-numpy
-h5py
-picosdk
-pyqtgraph
-PyQt5
-matplotlib
-loguru
-numba

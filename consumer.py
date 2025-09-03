@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import os
 import queue
+import threading
+from typing import Any, Dict, List
+
 import h5py
 import numpy as np
-import os
 from loguru import logger
-import threading
-from typing import List, Dict, Any
 
 
 class Consumer:

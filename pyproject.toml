@@ -3,7 +3,7 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pico-streamer"
+name = "picostream"
 version = "1.0.0"
 dependencies = [
     "numpy",
@@ -17,4 +17,4 @@ dependencies = [
 ]
 
 [project.scripts]
-pico-acquire = "main:main"
+picostream = "main:main"
