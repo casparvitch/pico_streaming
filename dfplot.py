@@ -318,13 +318,18 @@ class HDF5LivePlotter(QMainWindow):
         if self.voltage_range_v is None:
             self.read_metadata(f)
 
-        # Dynamically calculate the number of samples for the display window
-        display_window_samples = int(
+        # Dynamically calculate the number of timesteps for the display window
+        display_window_timesteps = int(
             self.display_window_seconds / (self.sample_interval_ns * 1e-9)
         )
 
-        # Calculate where to start reading to get the last window
-        start_index = max(0, current_size - display_window_samples)
+        # In aggregate mode, each timestep has two points (min/max)
+        display_window_points = display_window_timesteps
+        if self.downsample_mode == "aggregate":
+            display_window_points *= 2
+
+        # Calculate where to start reading to get the last window of points
+        start_index = max(0, current_size - display_window_points)
         self.data_start_sample = start_index
 
         # Track data freshness and changes
@@ -461,7 +466,7 @@ class HDF5LivePlotter(QMainWindow):
 
         The time axis is absolute, based on the data window's start position in
         the overall acquisition. It accounts for the `aggregate` downsample mode,
-        where each sample consists of two data points (min and max).
+        where the data stream consists of interleaved min/max pairs.
 
         Args:
             n_samples: The number of points for the time axis. This should be
@@ -470,18 +475,17 @@ class HDF5LivePlotter(QMainWindow):
         Returns:
             A NumPy array representing the time axis in seconds.
         """
-        time_per_sample = self.sample_interval_ns * 1e-9
-        start_time = self.data_start_sample * time_per_sample
+        time_per_timestep = self.sample_interval_ns * 1e-9
 
-        # Adjust sample count for aggregate mode, where each sample has two points (min/max)
-        num_samples_in_window = len(self.display_data)
-        if self.downsample_mode == "aggregate":
-            num_samples_in_window //= 2
+        # In aggregate mode, each timestep has 2 points, so we divide indices by 2
+        points_per_timestep = 2 if self.downsample_mode == "aggregate" else 1
 
-        # Calculate the end time based on the last sample in the original window
-        end_time = (
-            self.data_start_sample + num_samples_in_window - 1
-        ) * time_per_sample
+        start_timestep = self.data_start_sample / points_per_timestep
+        start_time = start_timestep * time_per_timestep
+
+        # Calculate end time based on the number of timesteps in the data window
+        num_timesteps_in_window = len(self.display_data) / points_per_timestep
+        end_time = (start_timestep + num_timesteps_in_window - 1) * time_per_timestep
         end_time = max(start_time, end_time)
 
         return np.linspace(start_time, end_time, n_samples)

@@ -88,7 +88,8 @@ class StreamExample:
 
         # Consumer buffers (for writing to HDF5) are sized to hold 1 second of data.
         # This is a good balance, as larger buffers lead to more efficient disk writes
-        # but use more RAM.
+        # but use more RAM. Note: This is sized based on the pre-downsample rate,
+        # making it a safe upper bound.
         consumer_buffer_duration_s = 1.0
         self.consumer_buffer_size = int(sample_rate_msps * 1e6 * consumer_buffer_duration_s)
         self.consumer_num_buffers = 5  # A pool of 5 buffers
@@ -117,6 +118,11 @@ class StreamExample:
             f"Plotting with target resolution of {plot_resolution} points. "
             f"Calculated decimation factor: {decimation_factor}"
         )
+
+        if downsample_mode == "aggregate" and hardware_downsample <= 1:
+            raise ValueError(
+                "Hardware downsample ratio must be > 1 for 'aggregate' mode."
+            )
 
         # --- Hardware Down-sampling ---
         if hardware_downsample > 1:

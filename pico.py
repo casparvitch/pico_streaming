@@ -312,7 +312,9 @@ class PicoDevice:
                 and self.bufferB is not None
                 and self.interleaved_buffer is not None
             ):
-                # The SDK gives us `noOfSamples` of min and `noOfSamples` of max
+                # The SDK provides min/max data in separate buffers (B/A).
+                # We interleave them into a single [min, max, min, max, ...]
+                # stream for the consumer.
                 total_interleaved_samples = noOfSamples * 2
                 # Interleave min (bufferB) and max (bufferA) data
                 self.interleaved_buffer[0:total_interleaved_samples:2] = self.bufferB[
