@@ -61,6 +61,7 @@ class HDF5LivePlotter(QMainWindow):
 
         # --- HDF5 Metadata ---
         self.sample_interval_ns: float = 16.0  # Default, will be read from file
+        self.hardware_downsample_ratio: int = 1
         self.ch_range: Optional[int] = None
         self.max_adc: Optional[int] = None
         self.voltage_range_v: Optional[float] = None
@@ -194,7 +195,14 @@ class HDF5LivePlotter(QMainWindow):
         """
         try:
             # Metadata is stored as root-level attributes
-            self.sample_interval_ns = hdf5_file.attrs["sample_interval_ns"]
+            base_sample_interval_ns = hdf5_file.attrs["sample_interval_ns"]
+            self.hardware_downsample_ratio = hdf5_file.attrs.get(
+                "hardware_downsample_ratio", 1
+            )
+            self.sample_interval_ns = (
+                base_sample_interval_ns * self.hardware_downsample_ratio
+            )
+
             self.max_adc = hdf5_file.attrs["max_adc"]
             self.voltage_range_v = hdf5_file.attrs["voltage_range_v"]
             self.downsample_mode = hdf5_file.attrs.get("downsample_mode", "average")

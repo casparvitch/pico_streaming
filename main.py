@@ -87,7 +87,8 @@ class StreamExample:  # TODO we should rename this something like Streamer?
 
         # --- Plotting Decimation ---
         # Calculate the decimation factor needed to achieve the target plot resolution.
-        samples_in_window = sample_rate_msps * 1e6 * plot_window_s
+        effective_rate_sps = (sample_rate_msps * 1e6) / pico_downsample_ratio
+        samples_in_window = effective_rate_sps * plot_window_s
         decimation_factor = max(1, int(samples_in_window / plot_resolution))
         logger.info(
             f"Plotting with target resolution of {plot_resolution} points. "
