@@ -15,7 +15,7 @@ from consumer import Consumer
 from pico import PicoDevice
 
 
-class StreamExample:  # TODO we should rename this something like Streamer?
+class Streamer:
     """Orchestrates the Picoscope data acquisition process.
 
     This class initializes the Picoscope device (producer), the HDF5 writer
@@ -32,7 +32,7 @@ class StreamExample:  # TODO we should rename this something like Streamer?
         output_file: str = "./output.hdf5",
         debug: bool = False,
         plot_window_s: float = 0.5,
-        plot_resolution: int = 4000,
+        plot_points: int = 4000,
         hardware_downsample: int = 1,
         downsample_mode: str = "average",
     ) -> None:
@@ -87,12 +87,12 @@ class StreamExample:  # TODO we should rename this something like Streamer?
         )
 
         # --- Plotting Decimation ---
-        # Calculate the decimation factor needed to achieve the target plot resolution.
+        # Calculate the decimation factor needed to achieve the target number of plot points.
         effective_rate_sps = (sample_rate_msps * 1e6) / pico_downsample_ratio
         samples_in_window = effective_rate_sps * plot_window_s
-        decimation_factor = max(1, int(samples_in_window / plot_resolution))
+        decimation_factor = max(1, int(samples_in_window / plot_points))
         logger.info(
-            f"Plotting with target resolution of {plot_resolution} points. "
+            f"Plotting with target of {plot_points} points. "
             f"Calculated decimation factor: {decimation_factor}"
         )
 
@@ -366,7 +366,20 @@ if __name__ == "__main__":
     import argparse
     from datetime import datetime
 
-    # Parse command line arguments
+    # --- Argument Parsing ---
+    VOLTAGE_RANGE_MAP = {
+        0.01: "PS5000A_10MV",
+        0.02: "PS5000A_20MV",
+        0.05: "PS5000A_50MV",
+        0.1: "PS5000A_100MV",
+        0.2: "PS5000A_200MV",
+        0.5: "PS5000A_500MV",
+        1.0: "PS5000A_1V",
+        2.0: "PS5000A_2V",
+        5.0: "PS5000A_5V",
+        10.0: "PS5000A_10V",
+        20.0: "PS5000A_20V",
+    }
     parser = argparse.ArgumentParser(description="PicoScope Data Acquisition")
     parser.add_argument(
         "--sample-rate",
@@ -385,26 +398,13 @@ if __name__ == "__main__":
             12,
             16,
         ],  # NOTE: we restrict to only these common values for simplicity
-        help="Resolution in bits (default: 16).",
+        help="Resolution in bits (default: 12).",
     )
-    voltage_ranges = [
-        "PS5000A_10MV",
-        "PS5000A_20MV",
-        "PS5000A_50MV",
-        "PS5000A_100MV",
-        "PS5000A_200MV",
-        "PS5000A_500MV",
-        "PS5000A_1V",
-        "PS5000A_2V",
-        "PS5000A_5V",
-        "PS5000A_10V",
-        "PS5000A_20V",  # NOTE: 20V is maximum for this device.
-    ]
     parser.add_argument(
         "--range",
-        choices=voltage_ranges,
-        default="PS5000A_20V",  # TODO change this to be an float in volts!! much easier for user.
-        help="Voltage range for Channel A (default: PS5000A_20V).",
+        type=float,
+        default=20.0,
+        help=f"Voltage range in Volts (default: 20.0). Must be one of: {sorted(VOLTAGE_RANGE_MAP.keys())}",
     )
     parser.add_argument(
         "--plot",
@@ -429,7 +429,8 @@ if __name__ == "__main__":
         "--verbose", "-v", action="store_true", help="Enable debug logging"
     )
     parser.add_argument(
-        "--plot-resolution",  # todo change this to --plot-pts !, resolution implies 1/num_points
+        "--plot-pts",
+        dest="plot_points",
         type=int,
         default=4000,
         help="Target number of points for the plot window (default: 4000).",
@@ -442,11 +443,20 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--downsample-mode",
-        choices=["average", "aggregate"],  # TODO add option here for 'none' ??
+        choices=["average", "aggregate"],
         default="average",
         help="Hardware down-sampling mode. 'aggregate' for min/max, 'average' for averaging (default: average).",
     )
     args = parser.parse_args()
+
+    # --- Argument Validation and Processing ---
+    # Validate and convert voltage range from float to Picoscope string format
+    if args.range not in VOLTAGE_RANGE_MAP:
+        logger.error(
+            f"Invalid voltage range: {args.range}V. Must be one of: {sorted(VOLTAGE_RANGE_MAP.keys())}"
+        )
+        sys.exit(1)
+    channel_range_str = VOLTAGE_RANGE_MAP[args.range]
 
     # Configure logging
     logger.remove()
@@ -463,15 +473,15 @@ if __name__ == "__main__":
 
     try:
         # Create and run the streamer
-        streamer = StreamExample(
+        streamer = Streamer(
             sample_rate_msps=args.sample_rate,
             resolution_bits=args.resolution,
-            channel_range_str=args.range,
+            channel_range_str=channel_range_str,
             enable_live_plot=args.plot,
             output_file=args.output,
             debug=args.verbose,
             plot_window_s=args.plot_window,
-            plot_resolution=args.plot_resolution,
+            plot_points=args.plot_points,
             hardware_downsample=args.hardware_downsample,
             downsample_mode=args.downsample_mode,
         )
