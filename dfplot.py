@@ -64,6 +64,7 @@ class HDF5LivePlotter(QMainWindow):
         self.ch_range: Optional[int] = None
         self.max_adc: Optional[int] = None
         self.voltage_range_v: Optional[float] = None
+        self.downsample_mode: Optional[str] = None
 
         # --- Debug Counters ---
         self.update_count: int = 0
@@ -196,6 +197,7 @@ class HDF5LivePlotter(QMainWindow):
             self.sample_interval_ns = hdf5_file.attrs["sample_interval_ns"]
             self.max_adc = hdf5_file.attrs["max_adc"]
             self.voltage_range_v = hdf5_file.attrs["voltage_range_v"]
+            self.downsample_mode = hdf5_file.attrs.get("downsample_mode", "average")
 
             # Update rate label with configured sample rate
             configured_rate_sps = 1e9 / self.sample_interval_ns
@@ -457,8 +459,9 @@ class HDF5LivePlotter(QMainWindow):
     def create_time_axis(self, n_samples: int) -> np.ndarray:
         """Creates a time axis for the displayed data window.
 
-        The time axis is absolute, based on the data window's start position
-        in the overall acquisition.
+        The time axis is absolute, based on the data window's start position in
+        the overall acquisition. It accounts for the `aggregate` downsample mode,
+        where each sample consists of two data points (min and max).
 
         Args:
             n_samples: The number of points for the time axis. This should be
@@ -470,9 +473,14 @@ class HDF5LivePlotter(QMainWindow):
         time_per_sample = self.sample_interval_ns * 1e-9
         start_time = self.data_start_sample * time_per_sample
 
+        # Adjust sample count for aggregate mode, where each sample has two points (min/max)
+        num_samples_in_window = len(self.display_data)
+        if self.downsample_mode == "aggregate":
+            num_samples_in_window //= 2
+
         # Calculate the end time based on the last sample in the original window
         end_time = (
-            self.data_start_sample + len(self.display_data) - 1
+            self.data_start_sample + num_samples_in_window - 1
         ) * time_per_sample
         end_time = max(start_time, end_time)
 
