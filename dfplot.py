@@ -290,8 +290,11 @@ class HDF5LivePlotter(QMainWindow):
 
         elapsed_time = time.perf_counter() - self.rate_check_start_time
         if elapsed_time > 1.0:  # Check only after 1s for stability
+            points_per_timestep = 2 if self.downsample_mode == "aggregate" else 1
             samples_acquired = current_size - self.rate_check_start_samples
-            actual_rate_sps = samples_acquired / elapsed_time
+            timesteps_acquired = samples_acquired / points_per_timestep
+            actual_rate_sps = timesteps_acquired / elapsed_time
+
             configured_rate_sps = 1e9 / self.sample_interval_ns
             rate_ratio = actual_rate_sps / configured_rate_sps
 
@@ -475,6 +478,10 @@ class HDF5LivePlotter(QMainWindow):
         the overall acquisition. It accounts for the `aggregate` downsample mode,
         where the data stream consists of interleaved min/max pairs.
 
+        For min-max decimated data, it generates pairs of time coordinates to
+        draw vertical lines for each min-max pair. For non-decimated data, it
+        generates a linearly spaced time axis.
+
         Args:
             n_samples: The number of points for the time axis. This should be
                 the number of points *after* decimation.
@@ -482,27 +489,30 @@ class HDF5LivePlotter(QMainWindow):
         Returns:
             A NumPy array representing the time axis in seconds.
         """
+        if n_samples == 0:
+            return np.array([])
+
         time_per_timestep = self.sample_interval_ns * 1e-9
-
-        # In aggregate mode, each timestep has 2 points, so we divide indices by 2
         points_per_timestep = 2 if self.downsample_mode == "aggregate" else 1
+        time_per_point = time_per_timestep / points_per_timestep
 
-        start_timestep = self.data_start_sample / points_per_timestep
-        start_time = start_timestep * time_per_timestep
+        start_time = (self.data_start_sample / points_per_timestep) * time_per_timestep
 
-        # Calculate end time based on the number of timesteps in the data window.
-        # This must account for samples discarded by the decimator.
         if self.decimation_factor > 1:
-            num_groups = len(self.display_data) // self.decimation_factor
-            used_points = num_groups * self.decimation_factor
-            num_timesteps_in_window = used_points / points_per_timestep
+            # For min-max, create pairs of time points for vertical lines
+            num_pairs = n_samples // 2
+            time_step_between_groups = self.decimation_factor * time_per_point
+            group_times = start_time + np.arange(num_pairs) * time_step_between_groups
+            return np.repeat(group_times, 2)
         else:
-            num_timesteps_in_window = len(self.display_data) / points_per_timestep
-
-        end_time = (start_timestep + num_timesteps_in_window - 1) * time_per_timestep
-        end_time = max(start_time, end_time)
-
-        return np.linspace(start_time, end_time, n_samples)
+            # For non-decimated data, create a linear time axis
+            duration = (
+                (n_samples - points_per_timestep) * time_per_point
+                if n_samples > 1
+                else 0
+            )
+            end_time = start_time + duration
+            return np.linspace(start_time, end_time, n_samples)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """Handles the window close event for a clean shutdown."""

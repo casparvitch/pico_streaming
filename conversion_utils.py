@@ -47,11 +47,11 @@ def min_max_decimate_numba(data: np.ndarray, factor: int) -> np.ndarray:
     Returns:
         A new NumPy array containing the decimated data, with a length of
         `2 * (len(data) // factor)`. The format is [min1, max1, min2, max2, ...].
-        If the input data has fewer points than `factor`, the original data
-        array is returned unmodified.
+        If `factor` is 1 or less, or if the input data has fewer points than
+        `factor`, the original data array is returned unmodified.
     """
-    # If the data is too short to be decimated, return it as is.
-    if len(data) < factor:
+    # If the decimation factor is 1 or less, or data is too short, do nothing.
+    if factor <= 1 or len(data) < factor:
         return data
 
     # Calculate how many full blocks of size `factor` we can process.
