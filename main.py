@@ -45,7 +45,7 @@ class StreamExample:
         self.pico_channel_range = "PS5000A_20V"
         if sample_rate_msps <= 0:
             # A value of 0 requests the fastest possible rate
-            self.pico_sample_interval_ns = 0
+            self.pico_sample_interval_ns = 16
         else:
             self.pico_sample_interval_ns = int(1000 / sample_rate_msps)
         self.pico_sample_unit = "PS5000A_NS"
