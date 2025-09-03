@@ -445,7 +445,8 @@ if __name__ == "__main__":
         "--downsample-mode",
         choices=["average", "aggregate"],
         default="average",
-        help="Hardware down-sampling mode. 'aggregate' for min/max, 'average' for averaging (default: average).",
+        help="Hardware down-sampling mode. 'aggregate' for min/max, " + 
+            "'average' for averaging (default: average). Only used if --hardware-downsample > 1.",
     )
     args = parser.parse_args()
 
