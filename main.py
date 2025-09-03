@@ -41,8 +41,8 @@ class StreamExample:
         self.consumer_num_buffers = 5  # Number of buffers
 
         # Picoscope hardware settings
-        self.pico_resolution = "PS5000A_DR_12BIT"
-        self.pico_channel_range = "PS5000A_20V"
+        self.pico_resolution = "PS5000A_DR_12BIT"  # TODO make this a cli option!!
+        self.pico_channel_range = "PS5000A_20V"    # TODO make this a cli option!!
         if sample_rate_msps <= 0:
             # A value of 0 requests the fastest possible rate
             self.pico_sample_interval_ns = 16
@@ -50,6 +50,7 @@ class StreamExample:
             self.pico_sample_interval_ns = int(1000 / sample_rate_msps)
         self.pico_sample_unit = "PS5000A_NS"
 
+        # TODO how can we rationally pick the buffer size(s)?? why 1?
         # Picoscope driver buffer settings (internal to the driver)
         self.pico_driver_buffer_size = 10_000_000  # Samples
         self.pico_driver_num_buffers = 1
@@ -96,9 +97,9 @@ class StreamExample:
         self.pico_device.configure_streaming_var(
             self.pico_sample_interval_ns,
             self.pico_sample_unit,
-            0,  # pre-trigger samples
-            1,  # down-sample ratio
-            "PS5000A_RATIO_MODE_NONE",
+            0,  # pre-trigger samples  ## TODO do we want cli option for this? not for streaming I guess?
+            1,  # down-sample ratio    ## TODO we want a cli option here?? Sample faster but down-sample hardware??!!
+            "PS5000A_RATIO_MODE_NONE",  ## will need to set this then, and the above data buffer??
             self.pico_auto_stop,
             self.pico_auto_stop_stream,
         )
