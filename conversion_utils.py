@@ -56,8 +56,6 @@ def min_max_decimate_numba(data: np.ndarray, factor: int) -> np.ndarray:
 
     # Calculate how many full blocks of size `factor` we can process.
     n_complete_groups = len(data) // factor
-    if n_complete_groups == 0:
-        return data
 
     # Pre-allocate the output array. It will hold 2 values (min and max)
     # for each group.

@@ -385,9 +385,12 @@ class HDF5LivePlotter(QMainWindow):
         )
 
         # Apply Numba-optimized decimation for display
-        decimated_data = min_max_decimate_numba(
-            self.display_data, self.decimation_factor
-        )
+        if self.decimation_factor > 1:
+            decimated_data = min_max_decimate_numba(
+                self.display_data, self.decimation_factor
+            )
+        else:
+            decimated_data = self.display_data
 
         # Debug: Log ADC values and metadata
         logger.debug(f"ADC range: {decimated_data.min()} to {decimated_data.max()}")
@@ -487,8 +490,15 @@ class HDF5LivePlotter(QMainWindow):
         start_timestep = self.data_start_sample / points_per_timestep
         start_time = start_timestep * time_per_timestep
 
-        # Calculate end time based on the number of timesteps in the data window
-        num_timesteps_in_window = len(self.display_data) / points_per_timestep
+        # Calculate end time based on the number of timesteps in the data window.
+        # This must account for samples discarded by the decimator.
+        if self.decimation_factor > 1:
+            num_groups = len(self.display_data) // self.decimation_factor
+            used_points = num_groups * self.decimation_factor
+            num_timesteps_in_window = used_points / points_per_timestep
+        else:
+            num_timesteps_in_window = len(self.display_data) / points_per_timestep
+
         end_time = (start_timestep + num_timesteps_in_window - 1) * time_per_timestep
         end_time = max(start_time, end_time)
 
