@@ -258,7 +258,6 @@ class PicoDevice:
             "downsample_mode": self.downsample_mode,
             "hardware_downsample_ratio": self.down_sample_ratio,
             "data_format_version": "1.0",
-            "interleaved_format": self.downsample_mode == "aggregate",
         }
 
         if self.downsample_mode == "aggregate":

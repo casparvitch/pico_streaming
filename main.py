@@ -93,7 +93,8 @@ class Streamer:
         # --- Plotting Decimation ---
         # Calculate the decimation factor needed to achieve the target number of plot points.
         effective_rate_sps = (sample_rate_msps * 1e6) / pico_downsample_ratio
-        samples_in_window = effective_rate_sps * plot_window_s
+        points_per_timestep = 2 if downsample_mode == "aggregate" else 1
+        samples_in_window = effective_rate_sps * plot_window_s * points_per_timestep
         self.decimation_factor = max(1, int(samples_in_window / plot_points))
         logger.info(
             f"Plotting with target of {plot_points} points. "
