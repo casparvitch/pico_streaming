@@ -14,7 +14,7 @@ from consumer import Consumer
 from pico import PicoDevice
 
 
-class StreamExample:
+class StreamExample: # TODO we should rename this something like Streamer?
     """Orchestrates the Picoscope data acquisition process.
 
     This class initializes the Picoscope device (producer), the HDF5 writer
@@ -61,33 +61,19 @@ class StreamExample:
                 f"Sample rate {sample_rate_msps} MS/s exceeds maximum of {max_rate_msps} MS/s for {resolution_bits}-bit resolution."
             )
 
-        # Check if sample rate is excessive for the analog bandwidth of the selected range
-        ANALOG_BANDWIDTH_MHZ = {
-            "PS5000A_10MV": 200,
-            "PS5000A_20MV": 200,
-            "PS5000A_50MV": 200,
-            "PS5000A_100MV": 200,
-            "PS5000A_200MV": 200,
-            "PS5000A_500MV": 200,
-            "PS5000A_1V": 200,
-            "PS5000A_2V": 150,
-            "PS5000A_5V": 100,
-            "PS5000A_10V": 50,
-            "PS5000A_20V": 25,
-            "PS5000A_50V": 25,
-            "PS5000A_100V": 25,
-            "PS5000A_200V": 25,
-        }
-        if channel_range_str in ANALOG_BANDWIDTH_MHZ:
-            bandwidth_mhz = ANALOG_BANDWIDTH_MHZ[channel_range_str]
-            # Nyquist rate is 2x bandwidth. A common rule of thumb is 3-5x.
-            # Warn if sampling faster than 5x the analog bandwidth.
-            if sample_rate_msps > 5 * bandwidth_mhz:
-                logger.warning(
-                    f"Sample rate ({sample_rate_msps} MS/s) may be unnecessarily high "
-                    f"for the selected voltage range ({channel_range_str}), which has an "
-                    f"analog bandwidth of {bandwidth_mhz} MHz."
-                )
+        # Check if sample rate is excessive for the analog bandwidth of the selected bit-depth
+        if resolution_bits == 16:
+            bandwidth_mhz = 100
+        else:
+            bandwidth_mhz = 60
+        # Nyquist rate is 2x bandwidth. A common rule of thumb is 3-5x.
+        # Warn if sampling faster than 5x the analog bandwidth.
+        if sample_rate_msps > 5 * bandwidth_mhz:
+            logger.warning(
+                f"Sample rate ({sample_rate_msps} MS/s) may be unnecessarily high "
+                f"for the selected voltage range ({channel_range_str}), which has an "
+                f"analog bandwidth of {bandwidth_mhz} MHz."
+            )
 
         # --- Buffer Sizing ---
         # Dynamically size buffers to hold a specific duration of data. This makes
@@ -360,9 +346,6 @@ class StreamExample:
 
 
 if __name__ == "__main__":
-    # This block runs when the script is executed directly.
-    # It handles command-line argument parsing, logging setup, and
-    # instantiates and runs the main StreamExample class.
     import argparse
     from datetime import datetime
 
@@ -372,16 +355,16 @@ if __name__ == "__main__":
         "--sample-rate",
         "-s",
         type=float,
-        default=62.5,
-        help="Sample rate in MS/s (e.g., 62.5 for 62.5MS/s). Use 0 for max rate.",
+        default=20,
+        help="Sample rate in MS/s (e.g., 62.5 for 62.5MS/s). Use 0 for max rate. Default: 20",
     )
     parser.add_argument(
         "--resolution",
         "-b",
         type=int,
         default=12,
-        choices=[8, 12, 14, 15, 16],
-        help="Resolution in bits (default: 12).",
+        choices=[8, 12, 16], # NOTE: we restrict to only these common values for simplicity
+        help="Resolution in bits (default: 16).",
     )
     voltage_ranges = [
         "PS5000A_10MV",
@@ -394,15 +377,12 @@ if __name__ == "__main__":
         "PS5000A_2V",
         "PS5000A_5V",
         "PS5000A_10V",
-        "PS5000A_20V",
-        "PS5000A_50V",
-        "PS5000A_100V",
-        "PS5000A_200V",
+        "PS5000A_20V", # NOTE: 20V is maximum for this device.
     ]
     parser.add_argument(
         "--range",
         choices=voltage_ranges,
-        default="PS5000A_20V",
+        default="PS5000A_20V", # TODO change this to be an float in volts!! much easier for user.
         help="Voltage range for Channel A (default: PS5000A_20V).",
     )
     parser.add_argument(
@@ -428,7 +408,7 @@ if __name__ == "__main__":
         "--verbose", "-v", action="store_true", help="Enable debug logging"
     )
     parser.add_argument(
-        "--plot-resolution",
+        "--plot-resolution", # todo change this to --plot-pts !, resolution implies 1/num_points
         type=int,
         default=4000,
         help="Target number of points for the plot window (default: 4000).",
@@ -441,7 +421,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--downsample-mode",
-        choices=["average", "aggregate"],
+        choices=["average", "aggregate"], # TODO add option here for 'none' ??
         default="average",
         help="Hardware down-sampling mode. 'aggregate' for min/max, 'average' for averaging (default: average).",
     )
