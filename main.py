@@ -14,7 +14,7 @@ from consumer import Consumer
 from pico import PicoDevice
 
 
-class StreamExample: # TODO we should rename this something like Streamer?
+class StreamExample:  # TODO we should rename this something like Streamer?
     """Orchestrates the Picoscope data acquisition process.
 
     This class initializes the Picoscope device (producer), the HDF5 writer
@@ -45,7 +45,11 @@ class StreamExample: # TODO we should rename this something like Streamer?
             pico_downsample_ratio,
             pico_ratio_mode,
         ) = self._validate_config(
-            resolution_bits, sample_rate_msps, channel_range_str, hardware_downsample, downsample_mode
+            resolution_bits,
+            sample_rate_msps,
+            channel_range_str,
+            hardware_downsample,
+            downsample_mode,
         )
         # Dynamically size buffers to hold a specific duration of data. This makes
         # memory usage proportional to the data rate, providing a consistent
@@ -311,7 +315,9 @@ class StreamExample: # TODO we should rename this something like Streamer?
         logger.info(f"Effective average rate: {effective_rate_msps:.2f} MS/s")
 
         rate_ratio = (
-            effective_rate_msps / configured_rate_msps if configured_rate_msps > 0 else 0
+            effective_rate_msps / configured_rate_msps
+            if configured_rate_msps > 0
+            else 0
         )
         if rate_ratio < 0.95:
             logger.warning(
@@ -371,7 +377,11 @@ if __name__ == "__main__":
         "-b",
         type=int,
         default=12,
-        choices=[8, 12, 16], # NOTE: we restrict to only these common values for simplicity
+        choices=[
+            8,
+            12,
+            16,
+        ],  # NOTE: we restrict to only these common values for simplicity
         help="Resolution in bits (default: 16).",
     )
     voltage_ranges = [
@@ -385,12 +395,12 @@ if __name__ == "__main__":
         "PS5000A_2V",
         "PS5000A_5V",
         "PS5000A_10V",
-        "PS5000A_20V", # NOTE: 20V is maximum for this device.
+        "PS5000A_20V",  # NOTE: 20V is maximum for this device.
     ]
     parser.add_argument(
         "--range",
         choices=voltage_ranges,
-        default="PS5000A_20V", # TODO change this to be an float in volts!! much easier for user.
+        default="PS5000A_20V",  # TODO change this to be an float in volts!! much easier for user.
         help="Voltage range for Channel A (default: PS5000A_20V).",
     )
     parser.add_argument(
@@ -416,7 +426,7 @@ if __name__ == "__main__":
         "--verbose", "-v", action="store_true", help="Enable debug logging"
     )
     parser.add_argument(
-        "--plot-resolution", # todo change this to --plot-pts !, resolution implies 1/num_points
+        "--plot-resolution",  # todo change this to --plot-pts !, resolution implies 1/num_points
         type=int,
         default=4000,
         help="Target number of points for the plot window (default: 4000).",
@@ -429,7 +439,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--downsample-mode",
-        choices=["average", "aggregate"], # TODO add option here for 'none' ??
+        choices=["average", "aggregate"],  # TODO add option here for 'none' ??
         default="average",
         help="Hardware down-sampling mode. 'aggregate' for min/max, 'average' for averaging (default: average).",
     )

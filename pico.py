@@ -38,12 +38,12 @@ class PicoDevice:
 
     This class handles device configuration, buffer management, and the data
     capture loop. It acts as the "producer" in a producer-consumer pattern.
-    
+
     Data Formats:
         - average mode: Single stream of averaged ADC values
         - aggregate mode: Interleaved stream [min1, max1, min2, max2, ...]
                          where each pair represents one downsampled timestep
-    
+
     Buffer Management:
         - SDK buffers: Direct hardware interface (bufferA, bufferB for aggregate)
         - Application buffers: Larger buffers for efficient file writing
@@ -136,7 +136,7 @@ class PicoDevice:
         self.empty_pro_queue_count: int = 0
         self.overflow_count: int = 0
         self.callback_durations: List[float] = []
-        
+
         # --- Aggregate Mode Performance Tracking ---
         self.interleave_durations: List[float] = []
 
@@ -175,9 +175,6 @@ class PicoDevice:
             "PS5000A_5V": 5.0,
             "PS5000A_10V": 10.0,
             "PS5000A_20V": 20.0,
-            "PS5000A_50V": 50.0,
-            "PS5000A_100V": 100.0,
-            "PS5000A_200V": 200.0,
         }
         self.voltage_range_v = range_to_voltage.get(voltage_range_str)
 
@@ -263,13 +260,15 @@ class PicoDevice:
             "data_format_version": "1.0",
             "interleaved_format": self.downsample_mode == "aggregate",
         }
-        
+
         if self.downsample_mode == "aggregate":
-            metadata.update({
-                "aggregate_format": "interleaved_min_max",
-                "aggregate_description": "Data format: [min1, max1, min2, max2, ...]"
-            })
-        
+            metadata.update(
+                {
+                    "aggregate_format": "interleaved_min_max",
+                    "aggregate_description": "Data format: [min1, max1, min2, max2, ...]",
+                }
+            )
+
         return metadata
 
     def run_streaming(self) -> None:
@@ -336,24 +335,33 @@ class PicoDevice:
                 and self.interleaved_buffer is not None
             ):
                 interleave_start = time.perf_counter()
-                
+
                 # The SDK provides min/max data in separate buffers (B/A).
                 # We interleave them into a single [min, max, min, max, ...]
                 # stream for the consumer.
                 total_interleaved_samples = noOfSamples * 2
-                
+
                 # Use numpy's more efficient interleaving
-                np.stack([self.bufferB[startIndex:startIndex + noOfSamples],
-                          self.bufferA[startIndex:startIndex + noOfSamples]], 
-                         axis=1, out=self.interleaved_buffer[:total_interleaved_samples].reshape(-1, 2))
-                
+                np.stack(
+                    [
+                        self.bufferB[startIndex : startIndex + noOfSamples],
+                        self.bufferA[startIndex : startIndex + noOfSamples],
+                    ],
+                    axis=1,
+                    out=self.interleaved_buffer[:total_interleaved_samples].reshape(
+                        -1, 2
+                    ),
+                )
+
                 source_buffer = self.interleaved_buffer
                 samples_to_process = total_interleaved_samples
                 # After interleaving, the source index is always 0
                 source_index = 0
-                
+
                 # Track interleaving performance
-                self.interleave_durations.append((time.perf_counter() - interleave_start) * 1000)
+                self.interleave_durations.append(
+                    (time.perf_counter() - interleave_start) * 1000
+                )
             else:
                 source_index = startIndex
 
@@ -418,16 +426,24 @@ class PicoDevice:
             logger.info(f"Max duration: {max(self.callback_durations):.2f} ms")
             logger.info(f"Avg duration: {np.mean(self.callback_durations):.2f} ms")
             logger.info("--------------------------")
-        
+
         # Report aggregate mode performance if applicable
         if self.downsample_mode == "aggregate" and self.interleave_durations:
             logger.info("--- Aggregate Mode Performance ---")
-            logger.info(f"Total interleave operations: {len(self.interleave_durations)}")
-            logger.info(f"Min interleave duration: {min(self.interleave_durations):.3f} ms")
-            logger.info(f"Max interleave duration: {max(self.interleave_durations):.3f} ms")
-            logger.info(f"Avg interleave duration: {np.mean(self.interleave_durations):.3f} ms")
+            logger.info(
+                f"Total interleave operations: {len(self.interleave_durations)}"
+            )
+            logger.info(
+                f"Min interleave duration: {min(self.interleave_durations):.3f} ms"
+            )
+            logger.info(
+                f"Max interleave duration: {max(self.interleave_durations):.3f} ms"
+            )
+            logger.info(
+                f"Avg interleave duration: {np.mean(self.interleave_durations):.3f} ms"
+            )
             logger.info("----------------------------------")
-        
+
         self.close_device()
 
     def close_device(self) -> None:
