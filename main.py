@@ -40,42 +40,13 @@ class StreamExample: # TODO we should rename this something like Streamer?
         self.debug = debug
         self.enable_live_plot = enable_live_plot
 
-        # --- Validate configuration ---
-        max_rate_msps = 0
-        if resolution_bits == 8:
-            max_rate_msps = 125.0
-        elif resolution_bits in [12, 14, 15, 16]:
-            max_rate_msps = 62.5
-        else:
-            # This should be caught by argparse choices, but as a safeguard:
-            raise ValueError(
-                f"Unsupported resolution: {resolution_bits} bits. Must be one of 8, 12, 14, 15, 16."
-            )
-
-        if sample_rate_msps <= 0:
-            sample_rate_msps = max_rate_msps
-            logger.info(f"Max sample rate requested. Setting to {max_rate_msps} MS/s.")
-
-        if sample_rate_msps > max_rate_msps:
-            raise ValueError(
-                f"Sample rate {sample_rate_msps} MS/s exceeds maximum of {max_rate_msps} MS/s for {resolution_bits}-bit resolution."
-            )
-
-        # Check if sample rate is excessive for the analog bandwidth of the selected bit-depth
-        if resolution_bits == 16:
-            bandwidth_mhz = 100
-        else:
-            bandwidth_mhz = 60
-        # Nyquist rate is 2x bandwidth. A common rule of thumb is 3-5x.
-        # Warn if sampling faster than 5x the analog bandwidth.
-        if sample_rate_msps > 5 * bandwidth_mhz:
-            logger.warning(
-                f"Sample rate ({sample_rate_msps} MS/s) may be unnecessarily high "
-                f"for the selected voltage range ({channel_range_str}), which has an "
-                f"analog bandwidth of {bandwidth_mhz} MHz."
-            )
-
-        # --- Buffer Sizing ---
+        (
+            sample_rate_msps,
+            pico_downsample_ratio,
+            pico_ratio_mode,
+        ) = self._validate_config(
+            resolution_bits, sample_rate_msps, channel_range_str, hardware_downsample, downsample_mode
+        )
         # Dynamically size buffers to hold a specific duration of data. This makes
         # memory usage proportional to the data rate, providing a consistent
         # time-based buffer to handle processing latencies.
@@ -118,30 +89,6 @@ class StreamExample: # TODO we should rename this something like Streamer?
             f"Plotting with target resolution of {plot_resolution} points. "
             f"Calculated decimation factor: {decimation_factor}"
         )
-
-        if downsample_mode == "aggregate" and hardware_downsample <= 1:
-            raise ValueError(
-                "Hardware downsample ratio must be > 1 for 'aggregate' mode."
-            )
-
-        # --- Hardware Down-sampling ---
-        if hardware_downsample > 1:
-            if (
-                downsample_mode == "average"
-                and (hardware_downsample & (hardware_downsample - 1)) != 0
-            ):
-                raise ValueError(
-                    "Hardware downsample ratio must be a power of two for 'average' mode."
-                )
-
-            pico_downsample_ratio = hardware_downsample
-            pico_ratio_mode = f"PS5000A_RATIO_MODE_{downsample_mode.upper()}"
-            logger.info(
-                f"Hardware down-sampling ({downsample_mode}) enabled with ratio {pico_downsample_ratio}."
-            )
-        else:
-            pico_downsample_ratio = 1
-            pico_ratio_mode = "PS5000A_RATIO_MODE_NONE"
 
         # Picoscope hardware settings
         self.pico_resolution = f"PS5000A_DR_{resolution_bits}BIT"
@@ -247,6 +194,72 @@ class StreamExample: # TODO we should rename this something like Streamer?
                 decimation_factor=decimation_factor,
             )
 
+    def _validate_config(
+        self,
+        resolution_bits: int,
+        sample_rate_msps: float,
+        channel_range_str: str,
+        hardware_downsample: int,
+        downsample_mode: str,
+    ) -> tuple[float, int, str]:
+        """Validates user-provided settings and returns derived configuration."""
+        if resolution_bits == 8:
+            max_rate_msps = 125.0
+        elif resolution_bits in [12, 14, 15, 16]:
+            max_rate_msps = 62.5
+        else:
+            raise ValueError(
+                f"Unsupported resolution: {resolution_bits} bits. Must be one of 8, 12, 14, 15, 16."
+            )
+
+        if sample_rate_msps <= 0:
+            sample_rate_msps = max_rate_msps
+            logger.info(f"Max sample rate requested. Setting to {max_rate_msps} MS/s.")
+
+        if sample_rate_msps > max_rate_msps:
+            raise ValueError(
+                f"Sample rate {sample_rate_msps} MS/s exceeds maximum of {max_rate_msps} MS/s for {resolution_bits}-bit resolution."
+            )
+
+        # Check if sample rate is excessive for the analog bandwidth of the selected bit-depth
+        if resolution_bits == 16:
+            bandwidth_mhz = 100
+        else:
+            bandwidth_mhz = 60
+        # Nyquist rate is 2x bandwidth. A common rule of thumb is 3-5x.
+        # Warn if sampling faster than 5x the analog bandwidth.
+        if sample_rate_msps > 5 * bandwidth_mhz:
+            logger.warning(
+                f"Sample rate ({sample_rate_msps} MS/s) may be unnecessarily high "
+                f"for the selected voltage range ({channel_range_str}), which has an "
+                f"analog bandwidth of {bandwidth_mhz} MHz."
+            )
+
+        if downsample_mode == "aggregate" and hardware_downsample <= 1:
+            raise ValueError(
+                "Hardware downsample ratio must be > 1 for 'aggregate' mode."
+            )
+
+        if hardware_downsample > 1:
+            if (
+                downsample_mode == "average"
+                and (hardware_downsample & (hardware_downsample - 1)) != 0
+            ):
+                raise ValueError(
+                    "Hardware downsample ratio must be a power of two for 'average' mode."
+                )
+
+            pico_downsample_ratio = hardware_downsample
+            pico_ratio_mode = f"PS5000A_RATIO_MODE_{downsample_mode.upper()}"
+            logger.info(
+                f"Hardware down-sampling ({downsample_mode}) enabled with ratio {pico_downsample_ratio}."
+            )
+        else:
+            pico_downsample_ratio = 1
+            pico_ratio_mode = "PS5000A_RATIO_MODE_NONE"
+
+        return sample_rate_msps, pico_downsample_ratio, pico_ratio_mode
+
     def signal_handler(self, _sig: int, frame: Optional[object]) -> None:
         """Handles Ctrl+C interrupts to initiate a graceful shutdown."""
         logger.warning("Ctrl+C detected. Shutting down.")
@@ -261,67 +274,62 @@ class StreamExample: # TODO we should rename this something like Streamer?
         if self.shutdown_event.is_set():
             return
 
-        # Calculate effective duration and rate
-        if self.start_time:
-            end_time = time.time()
-            duration = end_time - self.start_time
-            total_samples = self.consumer.values_written
-            effective_rate_msps = (
-                (total_samples / duration) / 1e6 if duration > 0 else 0
-            )
-            configured_rate_msps = 1e3 / self.pico_device.sample_int.value
-
-            logger.info("--- Acquisition Summary ---")
-            logger.info(f"Total acquisition time: {duration:.2f} s")
-            logger.info(
-                f"Total samples written: {self.consumer.format_sample_count(total_samples)}"
-            )
-            logger.info(f"Configured sample rate: {configured_rate_msps:.2f} MS/s")
-            logger.info(f"Effective average rate: {effective_rate_msps:.2f} MS/s")
-
-            rate_ratio = (
-                effective_rate_msps / configured_rate_msps
-                if configured_rate_msps > 0
-                else 0
-            )
-            if rate_ratio < 0.95:
-                logger.warning(
-                    f"Effective rate was only {rate_ratio:.1%} of the configured rate."
-                )
-            else:
-                logger.success("Effective rate matches configured rate.")
-            logger.info("--------------------------")
-
+        self._log_acquisition_summary()
         self.shutdown_event.set()
 
         logger.info("Stopping data acquisition and saving...")
 
-        # 2. Stop plotter timer and close window
         if self.live_plotter:
             self.live_plotter.timer.stop()
             self.live_plotter.close()
 
-        # 3. Wait for threads to finish
-        logger.info("Waiting for Picoscope thread to terminate...")
-        if hasattr(self, "pico_thread") and self.pico_thread.is_alive():
-            self.pico_thread.join(timeout=2.0)
-            if self.pico_thread.is_alive():
-                logger.critical("Pico thread failed to terminate.")
-
-        logger.info("Waiting for Consumer thread to terminate...")
-        if hasattr(self, "consumer_thread") and self.consumer_thread.is_alive():
-            self.consumer_thread.join(timeout=2.0)
-            if self.consumer_thread.is_alive():
-                logger.critical("Consumer thread failed to terminate.")
-
-        # 4. Now safe to close device
+        self._join_threads()
         self.pico_device.close_device()
 
-        # 5. Quit Qt
         if self.qt_app:
             self.qt_app.quit()
 
         logger.success("Shutdown complete.")
+
+    def _log_acquisition_summary(self) -> None:
+        """Calculates and logs final acquisition statistics."""
+        if not self.start_time:
+            return
+
+        end_time = time.time()
+        duration = end_time - self.start_time
+        total_samples = self.consumer.values_written
+        effective_rate_msps = (total_samples / duration) / 1e6 if duration > 0 else 0
+        configured_rate_msps = 1e3 / self.pico_device.sample_int.value
+
+        logger.info("--- Acquisition Summary ---")
+        logger.info(f"Total acquisition time: {duration:.2f} s")
+        logger.info(
+            f"Total samples written: {self.consumer.format_sample_count(total_samples)}"
+        )
+        logger.info(f"Configured sample rate: {configured_rate_msps:.2f} MS/s")
+        logger.info(f"Effective average rate: {effective_rate_msps:.2f} MS/s")
+
+        rate_ratio = (
+            effective_rate_msps / configured_rate_msps if configured_rate_msps > 0 else 0
+        )
+        if rate_ratio < 0.95:
+            logger.warning(
+                f"Effective rate was only {rate_ratio:.1%} of the configured rate."
+            )
+        else:
+            logger.success("Effective rate matches configured rate.")
+        logger.info("--------------------------")
+
+    def _join_threads(self) -> None:
+        """Waits for the producer and consumer threads to terminate."""
+        for thread_name in ["pico_thread", "consumer_thread"]:
+            thread = getattr(self, thread_name, None)
+            if thread and thread.is_alive():
+                logger.info(f"Waiting for {thread_name} to terminate...")
+                thread.join(timeout=2.0)
+                if thread.is_alive():
+                    logger.critical(f"{thread_name} failed to terminate.")
 
     def run(self) -> None:
         """Starts the acquisition threads and, if enabled, the Qt event loop."""

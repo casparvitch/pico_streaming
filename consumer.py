@@ -69,6 +69,36 @@ class Consumer:
         else:
             return str(count)
 
+    def _processing_loop(self, dset: h5py.Dataset) -> None:
+        """
+        Continuously processes data from the queue and writes to the HDF5 dataset.
+
+        Args:
+            dset: The HDF5 dataset to write to.
+        """
+        while not self.shutdown_event.is_set():
+            try:
+                # Wait for a buffer index from the producer.
+                # A timeout allows the loop to periodically check the shutdown event.
+                idx = self.data_queue.get(timeout=0.1)
+
+                # Append the new data to the HDF5 dataset.
+                buffer_len = len(self.data_buffers[idx])
+                dset.resize((self.values_written + buffer_len,))
+                dset[self.values_written :] = self.data_buffers[idx]
+
+                # Return the buffer index to the empty queue for reuse.
+                self.empty_queue.put(idx)
+
+                self.values_written += buffer_len
+
+            except queue.Empty:
+                # This occurs if the producer hasn't provided data within the timeout.
+                self.empty_con_queue_count += 1
+                # This is expected when acquisition stops, so no need to log as a warning
+                if not self.shutdown_event.is_set():
+                    logger.debug("Consumer queue was empty.")
+
     def consume(self) -> None:
         """The main loop for the consumer thread.
 
@@ -98,29 +128,7 @@ class Consumer:
                     chunks=(self.buffer_size,),
                 )
 
-                # Main loop: process data until the shutdown event is set.
-                while not self.shutdown_event.is_set():
-                    try:
-                        # Wait for a buffer index from the producer.
-                        # A timeout allows the loop to periodically check the shutdown event.
-                        idx = self.data_queue.get(timeout=0.1)
-
-                        # Append the new data to the HDF5 dataset.
-                        buffer_len = len(self.data_buffers[idx])
-                        dset.resize((self.values_written + buffer_len,))
-                        dset[self.values_written :] = self.data_buffers[idx]
-
-                        # Return the buffer index to the empty queue for reuse.
-                        self.empty_queue.put(idx)
-
-                        self.values_written += buffer_len
-
-                    except queue.Empty:
-                        # This occurs if the producer hasn't provided data within the timeout.
-                        self.empty_con_queue_count += 1
-                        # This is expected when acquisition stops, so no need to log as a warning
-                        if not self.shutdown_event.is_set():
-                            logger.debug("Consumer queue was empty.")
+                self._processing_loop(dset)
         except (IOError, OSError) as e:
             # A critical file error means we cannot continue.
             logger.critical(f"Failed to create or write to HDF5 file: {e}")
