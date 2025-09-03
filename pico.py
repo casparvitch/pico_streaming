@@ -136,6 +136,9 @@ class PicoDevice:
         self.empty_pro_queue_count: int = 0
         self.overflow_count: int = 0
         self.callback_durations: List[float] = []
+        
+        # --- Aggregate Mode Performance Tracking ---
+        self.interleave_durations: List[float] = []
 
         # --- Open device connection ---
         status = ps.ps5000aOpenUnit(ctypes.byref(self.handle), None, res_enum)
