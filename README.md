@@ -26,9 +26,10 @@ PicoScope → pico.py (Producer) → Data Buffers → consumer.py (Consumer) →
 
 ## Installation
 
-1.  **Python Dependencies**:
+1.  **Install the Package**:
+    This project is packaged with `pyproject.toml`. Install it in editable mode, which will also install all required dependencies:
     ```bash
-    pip install -r requirements.txt
+    pip install -e .
     ```
 
 2.  **PicoSDK Setup**:
@@ -44,33 +45,40 @@ PicoScope → pico.py (Producer) → Data Buffers → consumer.py (Consumer) →
 
 ## Usage
 
-The application is controlled via command-line arguments to `main.py`.
+After installation, the `picostream` command will be available in your environment.
 
 ### Basic Commands
 
-**Acquisition without live plotting:**
+**Acquisition with live plotting (default):**
 ```bash
-python main.py -o my_data.hdf5
+picostream -o my_data.hdf5 --sample-rate 62.5
 ```
 
-**Acquisition with live plotting:**
+**Acquisition without live plotting:**
 ```bash
-python main.py --plot -o my_data.hdf5
+picostream --no-plot -o my_data.hdf5
 ```
 
 **View an existing data file:**
+The plotter can be run as a standalone tool to view any compatible HDF5 file.
 ```bash
-python dfplot.py /path/to/your/data.hdf5
+python -m dfplot /path/to/your/data.hdf5
 ```
 
-### Command-Line Arguments
+### Command-Line Arguments (`picostream`)
 
--   `--rate` / `-r`: Sample rate in MS/s. Default: `62.5`. Use `0` for the maximum possible rate.
--   `--plot` / `-p`: Enable the live plot window.
--   `--output` / `-o`: Path to the output HDF5 file. Default: `/tmp/data_YYYYMMDD_HHMMSS.hdf5`.
--   `--plot-window` / `-w`: The time duration (in seconds) to display in the plot window. Default: `0.5`.
--   `--dec-fac` / `-d`: The decimation factor for plotting, which controls how many points are grouped for min/max calculation. Higher values reduce plot density. Default: `150`.
--   `--verbose` / `-v`: Enable detailed `DEBUG` level logging.
+Run `picostream --help` for a full list of options.
+
+-   `--sample-rate, -s`: Sample rate in MS/s (e.g., 62.5). Use 0 for max rate. [default: 20]
+-   `--resolution, -b`: Resolution in bits. [default: 12, choices: 8, 12, 16]
+-   `--range`: Voltage range in Volts. [default: 20.0]
+-   `--plot / --no-plot, -p`: Enable/disable live plotting. [default: --plot]
+-   `--output, -o`: Output HDF5 file (default: auto-timestamped).
+-   `--plot-window, -w`: Live plot display window duration in seconds. [default: 0.5]
+-   `--plot-pts`: Target number of points for the plot window. [default: 4000]
+-   `--hardware-downsample`: Hardware down-sampling ratio. [default: 1]
+-   `--downsample-mode`: Hardware down-sampling mode. [default: average, choices: average, aggregate]
+-   `--verbose, -v`: Enable debug logging.
 
 ## Data Analysis
 
@@ -107,16 +115,6 @@ with h5py.File('my_data.hdf5', 'r') as f:
 
 ## Troubleshooting
 
--   **"File not found" errors (plotter)**: Ensure the acquisition script (`main.py`) is running and has created the HDF5 file before the plotter tries to read it.
+-   **"File not found" errors (plotter)**: Ensure the acquisition script (`picostream`) is running and has created the HDF5 file before the plotter tries to read it.
 -   **Plotting window not appearing**: Verify `PyQt5` and `pyqtgraph` are installed. If using SSH, ensure X11 forwarding is enabled (`ssh -X user@host`).
--   **Performance Issues**: If the system is struggling, run acquisition without the `--plot` flag. You can also increase the plotting decimation factor (`--dec-fac`) to reduce the GUI workload.
-
-## Dependencies
-
--   `numpy`: Numerical computing
--   `h5py`: HDF5 file I/O
--   `picosdk`: Official PicoScope Python SDK
--   `pyqtgraph`: High-performance plotting
--   `PyQt5`: GUI framework
--   `loguru`: Clean and simple logging
--   `numba`: JIT compiler for performance-critical functions
+-   **Performance Issues**: If the system is struggling, run acquisition with the `--no-plot` flag. You can also reduce the GUI workload by decreasing the number of plotted points with `--plot-pts`.

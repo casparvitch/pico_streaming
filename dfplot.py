@@ -4,6 +4,7 @@ import sys
 import time
 from typing import List, Optional
 
+import click
 import h5py
 import numpy as np
 import pyqtgraph as pg
@@ -508,25 +509,27 @@ class HDF5LivePlotter(QMainWindow):
             super().keyPressEvent(event)
 
 
-def main() -> None:
-    """Standalone application entry point."""
-    import argparse
-
-    parser = argparse.ArgumentParser(description="HDF5 Live Plotter")
-    parser.add_argument("hdf5_path", help="Path to the HDF5 file to monitor.")
-    parser.add_argument(
-        "--window", type=float, default=0.5, help="Display window in seconds."
-    )
-    parser.add_argument(
-        "--decimation", type=int, default=150, help="Decimation factor."
-    )
-    args = parser.parse_args()
-
+@click.command()
+@click.argument("hdf5_path", type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    "--window",
+    type=float,
+    default=0.5,
+    help="Display window in seconds. [default: 0.5]",
+)
+@click.option(
+    "--decimation",
+    type=int,
+    default=150,
+    help="Decimation factor for plotting. [default: 150]",
+)
+def main(hdf5_path: str, window: float, decimation: int) -> None:
+    """Standalone HDF5 live plotter."""
     app = QApplication(sys.argv)
     plotter = HDF5LivePlotter(
-        hdf5_path=args.hdf5_path,
-        display_window_seconds=args.window,
-        decimation_factor=args.decimation,
+        hdf5_path=hdf5_path,
+        display_window_seconds=window,
+        decimation_factor=decimation,
     )
     plotter.show()
     sys.exit(app.exec_())
