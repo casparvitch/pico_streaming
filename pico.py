@@ -49,6 +49,7 @@ class PicoDevice:
         empty_queue: queue.Queue[int],
         data_buffers: List[np.ndarray],
         shutdown_event: threading.Event,
+        downsample_mode: str = "average",
     ) -> None:
         """Initializes the PicoDevice and opens a connection to the hardware.
 
@@ -77,7 +78,15 @@ class PicoDevice:
         self.comp_buffer_size: int = comp_buffer_size
 
         # --- Internal Data Buffer (receives data from SDK) ---
+        self.downsample_mode = downsample_mode
         self.bufferA: np.ndarray = np.zeros(shape=self.pico_buffer_size, dtype=np.int16)
+        self.bufferB: Optional[np.ndarray] = None
+        self.interleaved_buffer: Optional[np.ndarray] = None
+        if self.downsample_mode == "aggregate":
+            self.bufferB = np.zeros(shape=self.pico_buffer_size, dtype=np.int16)
+            self.interleaved_buffer = np.zeros(
+                shape=self.pico_buffer_size * 2, dtype=np.int16
+            )
 
         # --- Ctypes and Callback ---
         self.callbackFuncPtr = ps.StreamingReadyType(self.streaming_callback)
@@ -181,11 +190,18 @@ class PicoDevice:
         """
         channel_enum = ps.PS5000A_CHANNEL[chan]
         ratio_enum = ps.PS5000A_RATIO_MODE[rat]
+
+        buffer_min_ptr = None
+        if self.bufferB is not None:
+            buffer_min_ptr = self.bufferB.ctypes.data_as(
+                ctypes.POINTER(ctypes.c_int16)
+            )
+
         status = ps.ps5000aSetDataBuffers(
             self.handle,
             channel_enum,
             self.bufferA.ctypes.data_as(ctypes.POINTER(ctypes.c_int16)),
-            None,
+            buffer_min_ptr,
             self.pico_buffer_size,
             segment,
             ratio_enum,
@@ -230,6 +246,7 @@ class PicoDevice:
             "max_adc": self.max_adc.value,
             "channel_a_coupling": self.channel_a_coupling,
             "channel_a_range": self.channel_a_range_str,
+            "downsample_mode": self.downsample_mode,
         }
 
     def run_streaming(self) -> None:
@@ -285,10 +302,33 @@ class PicoDevice:
         callback_start_time = time.perf_counter()
         if noOfSamples > 0:
             self.captured_samples += noOfSamples
-            samples_to_process = noOfSamples
-            source_index = startIndex
 
-            # This loop copies data from the SDK's buffer (self.bufferA) into
+            source_buffer = self.bufferA
+            samples_to_process = noOfSamples
+
+            # In aggregate mode, interleave the min/max buffers into one
+            if (
+                self.downsample_mode == "aggregate"
+                and self.bufferB is not None
+                and self.interleaved_buffer is not None
+            ):
+                # The SDK gives us `noOfSamples` of min and `noOfSamples` of max
+                total_interleaved_samples = noOfSamples * 2
+                # Interleave min (bufferB) and max (bufferA) data
+                self.interleaved_buffer[0:total_interleaved_samples:2] = self.bufferB[
+                    startIndex : startIndex + noOfSamples
+                ]
+                self.interleaved_buffer[1:total_interleaved_samples:2] = self.bufferA[
+                    startIndex : startIndex + noOfSamples
+                ]
+                source_buffer = self.interleaved_buffer
+                samples_to_process = total_interleaved_samples
+                # After interleaving, the source index is always 0
+                source_index = 0
+            else:
+                source_index = startIndex
+
+            # This loop copies data from the source_buffer into
             # our larger, shared application buffers (self.data_buffers).
             while samples_to_process > 0:
                 # Determine how much space is left in the current application buffer.
@@ -298,7 +338,7 @@ class PicoDevice:
                 # Copy the data slice.
                 self.data_buffers[self.buf_idx][
                     self.buf_used : self.buf_used + copy_size
-                ] = self.bufferA[source_index : source_index + copy_size]
+                ] = source_buffer[source_index : source_index + copy_size]
 
                 # Update pointers and remaining sample counts.
                 self.buf_used += copy_size

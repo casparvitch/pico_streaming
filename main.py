@@ -33,6 +33,7 @@ class StreamExample:
         plot_window_s: float = 0.5,
         plot_resolution: int = 4000,
         hardware_downsample: int = 1,
+        downsample_mode: str = "average",
     ) -> None:
         # --- Configuration ---
         self.output_file = output_file
@@ -119,10 +120,17 @@ class StreamExample:
 
         # --- Hardware Down-sampling ---
         if hardware_downsample > 1:
+            if downsample_mode == "average" and (
+                hardware_downsample & (hardware_downsample - 1)
+            ) != 0:
+                raise ValueError(
+                    "Hardware downsample ratio must be a power of two for 'average' mode."
+                )
+
             pico_downsample_ratio = hardware_downsample
-            pico_ratio_mode = "PS5000A_RATIO_MODE_AVERAGE"
+            pico_ratio_mode = f"PS5000A_RATIO_MODE_{downsample_mode.upper()}"
             logger.info(
-                f"Hardware down-sampling (averaging) enabled with ratio {pico_downsample_ratio}."
+                f"Hardware down-sampling ({downsample_mode}) enabled with ratio {pico_downsample_ratio}."
             )
         else:
             pico_downsample_ratio = 1
@@ -163,6 +171,7 @@ class StreamExample:
             empty_queue,
             data_buffers,
             self.shutdown_event,
+            downsample_mode=downsample_mode,
         )
 
         self.pico_device.set_channel(
@@ -396,7 +405,13 @@ if __name__ == "__main__":
         "--hardware-downsample",
         type=int,
         default=1,
-        help="Hardware down-sampling (averaging) ratio. 1 for none (default: 1).",
+        help="Hardware down-sampling ratio. 1 for none (default: 1).",
+    )
+    parser.add_argument(
+        "--downsample-mode",
+        choices=["average", "aggregate"],
+        default="average",
+        help="Hardware down-sampling mode. 'aggregate' for min/max, 'average' for averaging (default: average).",
     )
     args = parser.parse_args()
 
@@ -425,6 +440,7 @@ if __name__ == "__main__":
             plot_window_s=args.plot_window,
             plot_resolution=args.plot_resolution,
             hardware_downsample=args.hardware_downsample,
+            downsample_mode=args.downsample_mode,
         )
         streamer.run()
     except RuntimeError as e:
