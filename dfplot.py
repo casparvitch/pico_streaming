@@ -278,7 +278,7 @@ class HDF5LivePlotter(QMainWindow):
         if not self.rate_check_start_time:
             return
 
-        elapsed_time = time.time() - self.rate_check_start_time
+        elapsed_time = time.perf_counter() - self.rate_check_start_time
         if elapsed_time > 1.0:  # Check only after 1s for stability
             samples_acquired = current_size - self.rate_check_start_samples
             actual_rate_sps = samples_acquired / elapsed_time
@@ -309,7 +309,7 @@ class HDF5LivePlotter(QMainWindow):
 
         # Start the rate check timer on the first data point
         if self.rate_check_start_time is None:
-            self.rate_check_start_time = time.time()
+            self.rate_check_start_time = time.perf_counter()
             self.rate_check_start_samples = current_size
 
         # Read metadata if not already done
