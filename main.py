@@ -24,7 +24,9 @@ class StreamExample:
 
     def __init__(
         self,
-        sample_rate_msps: float = 20.0,
+        sample_rate_msps: float = 62.5,
+        resolution_bits: int = 12,
+        channel_range_str: str = "PS5000A_20V",
         enable_live_plot: bool = False,
         output_file: str = "./output.hdf5",
         debug: bool = False,
@@ -40,14 +42,50 @@ class StreamExample:
         self.consumer_buffer_size = 10_000_000  # Samples per buffer
         self.consumer_num_buffers = 5  # Number of buffers
 
-        # Picoscope hardware settings
-        self.pico_resolution = "PS5000A_DR_12BIT"  # TODO make this a cli option!!
-        self.pico_channel_range = "PS5000A_20V"    # TODO make this a cli option!!
-        if sample_rate_msps <= 0:
-            # A value of 0 requests the fastest possible rate
-            self.pico_sample_interval_ns = 16
+        # --- Validate configuration ---
+        max_rate_msps = 0
+        if resolution_bits == 8:
+            max_rate_msps = 125.0
+        elif resolution_bits in [12, 14, 15, 16]:
+            max_rate_msps = 62.5
         else:
-            self.pico_sample_interval_ns = int(1000 / sample_rate_msps)
+            # This should be caught by argparse choices, but as a safeguard:
+            raise ValueError(
+                f"Unsupported resolution: {resolution_bits} bits. Must be one of 8, 12, 14, 15, 16."
+            )
+
+        if sample_rate_msps <= 0:
+            sample_rate_msps = max_rate_msps
+            logger.info(f"Max sample rate requested. Setting to {max_rate_msps} MS/s.")
+
+        if sample_rate_msps > max_rate_msps:
+            raise ValueError(
+                f"Sample rate {sample_rate_msps} MS/s exceeds maximum of {max_rate_msps} MS/s for {resolution_bits}-bit resolution."
+            )
+
+        # Check if sample rate is excessive for the analog bandwidth of the selected range
+        ANALOG_BANDWIDTH_MHZ = {
+            "PS5000A_10MV": 200, "PS5000A_20MV": 200, "PS5000A_50MV": 200,
+            "PS5000A_100MV": 200, "PS5000A_200MV": 200, "PS5000A_500MV": 200,
+            "PS5000A_1V": 200, "PS5000A_2V": 150, "PS5000A_5V": 100,
+            "PS5000A_10V": 50, "PS5000A_20V": 25, "PS5000A_50V": 25,
+            "PS5000A_100V": 25, "PS5000A_200V": 25,
+        }
+        if channel_range_str in ANALOG_BANDWIDTH_MHZ:
+            bandwidth_mhz = ANALOG_BANDWIDTH_MHZ[channel_range_str]
+            # Nyquist rate is 2x bandwidth. A common rule of thumb is 3-5x.
+            # Warn if sampling faster than 5x the analog bandwidth.
+            if sample_rate_msps > 5 * bandwidth_mhz:
+                logger.warning(
+                    f"Sample rate ({sample_rate_msps} MS/s) may be unnecessarily high "
+                    f"for the selected voltage range ({channel_range_str}), which has an "
+                    f"analog bandwidth of {bandwidth_mhz} MHz."
+                )
+
+        # Picoscope hardware settings
+        self.pico_resolution = f"PS5000A_DR_{resolution_bits}BIT"
+        self.pico_channel_range = channel_range_str
+        self.pico_sample_interval_ns = int(1000 / sample_rate_msps)
         self.pico_sample_unit = "PS5000A_NS"
 
         # TODO how can we rationally pick the buffer size(s)?? why 1?
@@ -260,11 +298,31 @@ if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="PicoScope Data Acquisition")
     parser.add_argument(
-        "--rate",
-        "-r",
+        "--sample-rate",
+        "-s",
         type=float,
-        default=20.0,
-        help="Sample rate in MS/s (e.g., 20 for 20MS/s). Use 0 or -1 for max rate (~60MS/s).",
+        default=62.5,
+        help="Sample rate in MS/s (e.g., 62.5 for 62.5MS/s). Use 0 for max rate.",
+    )
+    parser.add_argument(
+        "--resolution",
+        "-b",
+        type=int,
+        default=12,
+        choices=[8, 12, 14, 15, 16],
+        help="Resolution in bits (default: 12).",
+    )
+    voltage_ranges = [
+        "PS5000A_10MV", "PS5000A_20MV", "PS5000A_50MV", "PS5000A_100MV",
+        "PS5000A_200MV", "PS5000A_500MV", "PS5000A_1V", "PS5000A_2V",
+        "PS5000A_5V", "PS5000A_10V", "PS5000A_20V", "PS5000A_50V",
+        "PS5000A_100V", "PS5000A_200V"
+    ]
+    parser.add_argument(
+        "--range",
+        choices=voltage_ranges,
+        default="PS5000A_20V",
+        help="Voltage range for Channel A (default: PS5000A_20V).",
     )
     parser.add_argument(
         "--plot",
@@ -307,7 +365,9 @@ if __name__ == "__main__":
     try:
         # Create and run the streamer
         streamer = StreamExample(
-            sample_rate_msps=args.rate,
+            sample_rate_msps=args.sample_rate,
+            resolution_bits=args.resolution,
+            channel_range_str=args.range,
             enable_live_plot=args.plot,
             output_file=args.output,
             debug=args.verbose,
