@@ -97,7 +97,7 @@ class StreamExample:
         self.pico_device.configure_streaming_var(
             self.pico_sample_interval_ns,
             self.pico_sample_unit,
-            0,  # pre-trigger samples  ## TODO do we want cli option for this? not for streaming I guess?
+            0,  # pre-trigger samples
             1,  # down-sample ratio    ## TODO we want a cli option here?? Sample faster but down-sample hardware??!!
             "PS5000A_RATIO_MODE_NONE",  ## will need to set this then, and the above data buffer??
             self.pico_auto_stop,
