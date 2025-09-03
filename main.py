@@ -24,9 +24,9 @@ class StreamExample:
 
     def __init__(
         self,
-        sample_rate_msps: float = 62.5,
+        sample_rate_msps: float = 20.0,
         enable_live_plot: bool = False,
-        output_file: str = "/tmp/data.hdf5",
+        output_file: str = "./output.hdf5",
         debug: bool = False,
         plot_window_s: float = 0.5,
         decimation_factor: int = 150,
@@ -262,30 +262,31 @@ if __name__ == "__main__":
         "--rate",
         "-r",
         type=float,
-        default=62.5,
-        help="Sample rate in MS/s (e.g., 20 for 20MS/s). Use 0 or -1 for max rate.",
+        default=20.0,
+        help="Sample rate in MS/s (e.g., 20 for 20MS/s). Use 0 or -1 for max rate (~60MS/s).",
     )
     parser.add_argument(
         "--plot",
         "-p",
         action="store_true",
-        help="Enable live plotting (requires PyQt5 and pyqtgraph)",
+        default=True,
+        help="Enable live plotting (requires PyQt5 and pyqtgraph, default: true).",
     )
     parser.add_argument(
-        "--output", "-o", help="Output HDF5 file (default: auto-timestamped in /tmp/)"
+        "--output", "-o", help="Output HDF5 file (default: auto-timestamped as ./output_{}.hdf5)."
     )
     parser.add_argument(
         "--plot-window",
         "-w",
         type=float,
         default=0.5,
-        help="Set the live plot display window duration in seconds.",
+        help="Set the live plot display window duration in seconds (default: 0.5s).",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable debug logging"
     )
     parser.add_argument(
-        "--dec-fac", "-d", type=int, default=150, help="Decimation factor for plotting"
+        "--dec-fac", "-d", type=int, default=150, help="Decimation factor for plotting (default: 150)."
     )
     args = parser.parse_args()
 
@@ -298,7 +299,7 @@ if __name__ == "__main__":
     # Auto-generate filename if not specified
     if not args.output:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.output = f"/tmp/data_{timestamp}.hdf5"
+        args.output = f"./output_{timestamp}.hdf5"
 
     logger.info(f"Output file: {args.output}")
 
