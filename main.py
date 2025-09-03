@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import queue
 import signal
+import subprocess
 import sys
 import threading
 import time
+from datetime import datetime
 from typing import List, Optional
 
+import click
 import h5py
 import numpy as np
 from loguru import logger
@@ -40,6 +43,7 @@ class Streamer:
         self.output_file = output_file
         self.debug = debug
         self.enable_live_plot = enable_live_plot
+        self.plot_window_s = plot_window_s
 
         (
             sample_rate_msps,
@@ -90,10 +94,10 @@ class Streamer:
         # Calculate the decimation factor needed to achieve the target number of plot points.
         effective_rate_sps = (sample_rate_msps * 1e6) / pico_downsample_ratio
         samples_in_window = effective_rate_sps * plot_window_s
-        decimation_factor = max(1, int(samples_in_window / plot_points))
+        self.decimation_factor = max(1, int(samples_in_window / plot_points))
         logger.info(
             f"Plotting with target of {plot_points} points. "
-            f"Calculated decimation factor: {decimation_factor}"
+            f"Calculated decimation factor: {self.decimation_factor}"
         )
 
         # Picoscope hardware settings
@@ -180,26 +184,8 @@ class Streamer:
         signal.signal(signal.SIGINT, self.signal_handler)
 
         # --- Live Plotting (optional) ---
-        self.live_plotter: Optional["HDF5LivePlotter"] = None
-        self.qt_app: Optional["QApplication"] = None
+        self.plotter_process: Optional[subprocess.Popen] = None
         self.start_time: Optional[float] = None
-
-        if self.enable_live_plot:
-            # Import Qt components only when needed
-            from PyQt5.QtWidgets import QApplication
-
-            from dfplot import HDF5LivePlotter
-
-            # Create Qt application if it doesn't exist
-            if not QApplication.instance():
-                self.qt_app = QApplication(sys.argv)
-
-            # Create the live plotter
-            self.live_plotter = HDF5LivePlotter(
-                output_file,
-                display_window_seconds=plot_window_s,
-                decimation_factor=decimation_factor,
-            )
 
     def _validate_config(
         self,
@@ -288,15 +274,17 @@ class Streamer:
 
         logger.info("Stopping data acquisition and saving...")
 
-        if self.live_plotter:
-            self.live_plotter.timer.stop()
-            self.live_plotter.close()
+        if self.plotter_process:
+            logger.info("Terminating plotter process...")
+            self.plotter_process.terminate()
+            try:
+                self.plotter_process.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                logger.warning("Plotter process did not terminate gracefully.")
+                self.plotter_process.kill()
 
         self._join_threads()
         self.pico_device.close_device()
-
-        if self.qt_app:
-            self.qt_app.quit()
 
         logger.success("Shutdown complete.")
 
@@ -351,146 +339,157 @@ class Streamer:
         self.pico_thread.start()
 
         # Handle Qt event loop if plotting is enabled
-        if self.enable_live_plot and self.qt_app:
-            # Show plotter window and run Qt event loop (blocking)
-            self.live_plotter.show()
-            self.qt_app.exec_()
+        if self.enable_live_plot:
+            # Launch the plotter in a separate process
+            plotter_command = [
+                sys.executable,
+                "-m",
+                "dfplot",
+                self.output_file,
+                "--window",
+                str(self.plot_window_s),
+                "--decimation",
+                str(self.decimation_factor),
+            ]
+            logger.info(f"Launching plotter: {' '.join(plotter_command)}")
+            self.plotter_process = subprocess.Popen(plotter_command)
 
-            # Once the plot window is closed, initiate shutdown
+        # Wait for threads to complete. This will block until shutdown is called
+        # or acquisition finishes naturally (if auto_stop were enabled).
+        self.consumer_thread.join()
+        self.pico_thread.join()
+
+        # If the plotter process was started, ensure it's handled on exit
+        if self.plotter_process and self.plotter_process.poll() is None:
+            logger.info("Acquisition finished, terminating plotter.")
             self.shutdown()
         else:
-            # Original behavior for non-plotting mode
-            self.consumer_thread.join()
-            self.pico_thread.join()
             logger.success("Acquisition complete!")
 
 
-if __name__ == "__main__":
-    import argparse
-    from datetime import datetime
+# --- Argument Parsing ---
+VOLTAGE_RANGE_MAP = {
+    0.01: "PS5000A_10MV",
+    0.02: "PS5000A_20MV",
+    0.05: "PS5000A_50MV",
+    0.1: "PS5000A_100MV",
+    0.2: "PS5000A_200MV",
+    0.5: "PS5000A_500MV",
+    1.0: "PS5000A_1V",
+    2.0: "PS5000A_2V",
+    5.0: "PS5000A_5V",
+    10.0: "PS5000A_10V",
+    20.0: "PS5000A_20V",
+}
 
-    # --- Argument Parsing ---
-    VOLTAGE_RANGE_MAP = {
-        0.01: "PS5000A_10MV",
-        0.02: "PS5000A_20MV",
-        0.05: "PS5000A_50MV",
-        0.1: "PS5000A_100MV",
-        0.2: "PS5000A_200MV",
-        0.5: "PS5000A_500MV",
-        1.0: "PS5000A_1V",
-        2.0: "PS5000A_2V",
-        5.0: "PS5000A_5V",
-        10.0: "PS5000A_10V",
-        20.0: "PS5000A_20V",
-    }
-    parser = argparse.ArgumentParser(description="PicoScope Data Acquisition")
-    parser.add_argument(
-        "--sample-rate",
-        "-s",
-        type=float,
-        default=20,
-        help="Sample rate in MS/s (e.g., 62.5 for 62.5MS/s). "
-        + "Use 0 for max rate. Default: 20",
-    )
-    parser.add_argument(
-        "--resolution",
-        "-b",
-        type=int,
-        default=12,
-        choices=[
-            8,
-            12,
-            16,
-        ],  # NOTE: we restrict to only these common values for simplicity
-        help="Resolution in bits (default: 12).",
-    )
-    parser.add_argument(
-        "--range",
-        type=float,
-        default=20.0,
-        choices=sorted(VOLTAGE_RANGE_MAP.keys()),
-        help="Voltage range in Volts (default: 20.0). Must be one of: "
-        + f"{sorted(VOLTAGE_RANGE_MAP.keys())}",
-    )
-    parser.add_argument(
-        "--plot",
-        "-p",
-        action="store_true",
-        default=True,
-        help="Enable live plotting (requires PyQt5 and pyqtgraph, default: true).",
-    )
-    parser.add_argument(
-        "--output",
-        "-o",
-        help="Output HDF5 file (default: auto-timestamped as ./output_{}.hdf5).",
-    )
-    parser.add_argument(
-        "--plot-window",
-        "-w",
-        type=float,
-        default=0.5,
-        help="Set the live plot display window duration in seconds (default: 0.5s).",
-    )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Enable debug logging"
-    )
-    parser.add_argument(
-        "--plot-pts",
-        dest="plot_points",
-        type=int,
-        default=4000,
-        help="Target number of points for the plot window (default: 4000).",
-    )
-    parser.add_argument(
-        "--hardware-downsample",
-        type=int,
-        default=1,
-        help="Hardware down-sampling ratio. 1 for none (default: 1).",
-    )
-    parser.add_argument(
-        "--downsample-mode",
-        choices=["average", "aggregate"],
-        default="average",
-        help="Hardware down-sampling mode. 'aggregate' for min/max, "
-        + "'average' for averaging (default: average). Only used if --hardware-downsample > 1.",
-    )
-    args = parser.parse_args()
 
+@click.command()
+@click.option(
+    "--sample-rate",
+    "-s",
+    type=float,
+    default=20,
+    help="Sample rate in MS/s (e.g., 62.5). Use 0 for max rate. [default: 20]",
+)
+@click.option(
+    "--resolution",
+    "-b",
+    type=click.Choice(["8", "12", "16"]),
+    default="12",
+    help="Resolution in bits. [default: 12]",
+)
+@click.option(
+    "--range",
+    "voltage_range",
+    type=click.Choice([str(k) for k in sorted(VOLTAGE_RANGE_MAP.keys())]),
+    default="20.0",
+    help=f"Voltage range in Volts. [default: 20.0]",
+)
+@click.option(
+    "--plot/--no-plot",
+    "-p",
+    is_flag=True,
+    default=True,
+    help="Enable/disable live plotting. [default: --plot]",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, writable=True),
+    help="Output HDF5 file (default: auto-timestamped).",
+)
+@click.option(
+    "--plot-window",
+    "-w",
+    type=float,
+    default=0.5,
+    help="Live plot display window duration in seconds. [default: 0.5]",
+)
+@click.option(
+    "--verbose", "-v", is_flag=True, default=False, help="Enable debug logging."
+)
+@click.option(
+    "--plot-pts",
+    "plot_points",
+    type=int,
+    default=4000,
+    help="Target number of points for the plot window. [default: 4000]",
+)
+@click.option(
+    "--hardware-downsample",
+    type=int,
+    default=1,
+    help="Hardware down-sampling ratio (power of 2 for 'average' mode). [default: 1]",
+)
+@click.option(
+    "--downsample-mode",
+    type=click.Choice(["average", "aggregate"]),
+    default="average",
+    help="Hardware down-sampling mode. [default: average]",
+)
+def main(
+    sample_rate: float,
+    resolution: str,
+    voltage_range: str,
+    plot: bool,
+    output: Optional[str],
+    plot_window: float,
+    verbose: bool,
+    plot_points: int,
+    hardware_downsample: int,
+    downsample_mode: str,
+) -> None:
+    """High-speed data acquisition tool for Picoscope 5000a series."""
     # --- Argument Validation and Processing ---
-    # Validate and convert voltage range from float to Picoscope string format
-    if args.range not in VOLTAGE_RANGE_MAP:
-        logger.error(
-            f"Invalid voltage range: {args.range}V. Must be one of: {sorted(VOLTAGE_RANGE_MAP.keys())}"
-        )
-        sys.exit(1)
-    channel_range_str = VOLTAGE_RANGE_MAP[args.range]
+    channel_range_str = VOLTAGE_RANGE_MAP[float(voltage_range)]
+    resolution_bits = int(resolution)
 
     # Configure logging
     logger.remove()
-    log_level = "DEBUG" if args.verbose else "INFO"
+    log_level = "DEBUG" if verbose else "INFO"
     logger.add(sys.stderr, level=log_level)
     logger.info(f"Logging configured at level: {log_level}")
 
     # Auto-generate filename if not specified
-    if not args.output:
+    if not output:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        args.output = f"./output_{timestamp}.hdf5"
+        output = f"./output_{timestamp}.hdf5"
 
-    logger.info(f"Output file: {args.output}")
+    logger.info(f"Output file: {output}")
 
     try:
         # Create and run the streamer
         streamer = Streamer(
-            sample_rate_msps=args.sample_rate,
-            resolution_bits=args.resolution,
+            sample_rate_msps=sample_rate,
+            resolution_bits=resolution_bits,
             channel_range_str=channel_range_str,
-            enable_live_plot=args.plot,
-            output_file=args.output,
-            debug=args.verbose,
-            plot_window_s=args.plot_window,
-            plot_points=args.plot_points,
-            hardware_downsample=args.hardware_downsample,
-            downsample_mode=args.downsample_mode,
+            enable_live_plot=plot,
+            output_file=output,
+            debug=verbose,
+            plot_window_s=plot_window,
+            plot_points=plot_points,
+            hardware_downsample=hardware_downsample,
+            downsample_mode=downsample_mode,
         )
         streamer.run()
     except RuntimeError as e:
@@ -503,13 +502,13 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # --- Verification Step ---
-    logger.info(f"Verifying output file: {args.output}")
+    logger.info(f"Verifying output file: {output}")
     try:
         expected_samples = streamer.consumer.values_written
         if expected_samples == 0:
             logger.warning("Consumer processed no samples. Nothing to verify.")
         else:
-            with h5py.File(args.output, "r") as f:
+            with h5py.File(output, "r") as f:
                 if "adc_counts" not in f:
                     raise ValueError("Dataset 'adc_counts' not found in HDF5 file.")
 
@@ -524,3 +523,7 @@ if __name__ == "__main__":
                     )
     except Exception as e:
         logger.error(f"HDF5 file verification failed: {e}")
+
+
+if __name__ == "__main__":
+    main()

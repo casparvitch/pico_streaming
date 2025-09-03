@@ -510,14 +510,25 @@ class HDF5LivePlotter(QMainWindow):
 
 def main() -> None:
     """Standalone application entry point."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="HDF5 Live Plotter")
+    parser.add_argument("hdf5_path", help="Path to the HDF5 file to monitor.")
+    parser.add_argument(
+        "--window", type=float, default=0.5, help="Display window in seconds."
+    )
+    parser.add_argument(
+        "--decimation", type=int, default=150, help="Decimation factor."
+    )
+    args = parser.parse_args()
+
     app = QApplication(sys.argv)
-
-    # Command line argument for HDF5 file path
-    hdf5_path = sys.argv[1] if len(sys.argv) > 1 else "/tmp/data.hdf5"
-
-    plotter = HDF5LivePlotter(hdf5_path)
+    plotter = HDF5LivePlotter(
+        hdf5_path=args.hdf5_path,
+        display_window_seconds=args.window,
+        decimation_factor=args.decimation,
+    )
     plotter.show()
-
     sys.exit(app.exec_())
 
 

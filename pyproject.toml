@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pico-streamer"
+version = "1.0.0"
+dependencies = [
+    "numpy",
+    "loguru",
+    "picosdk",
+    "h5py",
+    "pyqtgraph",
+    "PyQt5",
+    "numba",
+    "click",
+]
+
+[project.scripts]
+pico-acquire = "main:main"
