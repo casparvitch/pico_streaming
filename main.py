@@ -253,13 +253,15 @@ class Streamer:
                 and (hardware_downsample & (hardware_downsample - 1)) != 0
             ):
                 raise ValueError(
-                    "Hardware downsample ratio must be a power of two for 'average' mode."
+                    "Hardware downsample ratio must be a power of two "
+                    + "for 'average' mode."
                 )
 
             pico_downsample_ratio = hardware_downsample
             pico_ratio_mode = f"PS5000A_RATIO_MODE_{downsample_mode.upper()}"
             logger.info(
-                f"Hardware down-sampling ({downsample_mode}) enabled with ratio {pico_downsample_ratio}."
+                f"Hardware down-sampling ({downsample_mode}) enabled "
+                + "with ratio {pico_downsample_ratio}."
             )
         else:
             pico_downsample_ratio = 1
@@ -312,7 +314,8 @@ class Streamer:
         logger.info("--- Acquisition Summary ---")
         logger.info(f"Total acquisition time: {duration:.2f} s")
         logger.info(
-            f"Total samples written: {self.consumer.format_sample_count(total_samples)}"
+            "Total samples written: "
+            + f"{self.consumer.format_sample_count(total_samples)}"
         )
         logger.info(f"Configured sample rate: {configured_rate_msps:.2f} MS/s")
         logger.info(f"Effective average rate: {effective_rate_msps:.2f} MS/s")
@@ -324,7 +327,7 @@ class Streamer:
         )
         if rate_ratio < 0.95:
             logger.warning(
-                f"Effective rate was only {rate_ratio:.1%} of the configured rate."
+                f"Effective rate was only {rate_ratio:.1%} " + "of the configured rate."
             )
         else:
             logger.success("Effective rate matches configured rate.")
@@ -341,7 +344,7 @@ class Streamer:
                     logger.critical(f"{thread_name} failed to terminate.")
 
     def run(self) -> None:
-        """Starts the acquisition threads and, if enabled, the Qt event loop."""
+        """Starts the acquisition threads and (if enab.) the Qt event loop."""
         # Start acquisition threads
         self.start_time = time.time()
         self.consumer_thread.start()
@@ -386,7 +389,8 @@ if __name__ == "__main__":
         "-s",
         type=float,
         default=20,
-        help="Sample rate in MS/s (e.g., 62.5 for 62.5MS/s). Use 0 for max rate. Default: 20",
+        help="Sample rate in MS/s (e.g., 62.5 for 62.5MS/s). "
+        + "Use 0 for max rate. Default: 20",
     )
     parser.add_argument(
         "--resolution",
@@ -404,7 +408,9 @@ if __name__ == "__main__":
         "--range",
         type=float,
         default=20.0,
-        help=f"Voltage range in Volts (default: 20.0). Must be one of: {sorted(VOLTAGE_RANGE_MAP.keys())}",
+        choices=sorted(VOLTAGE_RANGE_MAP.keys()),
+        help="Voltage range in Volts (default: 20.0). Must be one of: "
+        + f"{sorted(VOLTAGE_RANGE_MAP.keys())}",
     )
     parser.add_argument(
         "--plot",
@@ -445,8 +451,8 @@ if __name__ == "__main__":
         "--downsample-mode",
         choices=["average", "aggregate"],
         default="average",
-        help="Hardware down-sampling mode. 'aggregate' for min/max, " + 
-            "'average' for averaging (default: average). Only used if --hardware-downsample > 1.",
+        help="Hardware down-sampling mode. 'aggregate' for min/max, "
+        + "'average' for averaging (default: average). Only used if --hardware-downsample > 1.",
     )
     args = parser.parse_args()
 

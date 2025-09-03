@@ -2,21 +2,22 @@ from __future__ import annotations
 
 import sys
 import time
-import numpy as np
+from typing import List, Optional
+
 import h5py
+import numpy as np
+import pyqtgraph as pg
 from loguru import logger
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QCloseEvent, QFont, QKeyEvent
 from PyQt5.QtWidgets import (
     QApplication,
+    QHBoxLayout,
+    QLabel,
     QMainWindow,
     QVBoxLayout,
     QWidget,
-    QLabel,
-    QHBoxLayout,
 )
-from PyQt5.QtGui import QFont, QKeyEvent, QCloseEvent
-from PyQt5.QtCore import QTimer, Qt
-import pyqtgraph as pg
-from typing import List, Optional
 
 from conversion_utils import adc_to_mV, min_max_decimate_numba
 
@@ -264,7 +265,9 @@ class HDF5LivePlotter(QMainWindow):
         latency_color = (
             "green"
             if self.display_latency_ms < 100
-            else "orange" if self.display_latency_ms < 500 else "red"
+            else "orange"
+            if self.display_latency_ms < 500
+            else "red"
         )
         self.plotter_latency_label.setText(
             f'<span style="color: {latency_color}">Plotter Latency: {self.display_latency_ms:.0f}ms</span>'
@@ -358,9 +361,7 @@ class HDF5LivePlotter(QMainWindow):
         except Exception as e:
             self.file_error_count += 1
             logger.error(f"Update {self.update_count}: Error reading file - {e}")
-            self.acq_status_label.setText(
-                f'<span style="color: red">File error!</span>'
-            )
+            self.acq_status_label.setText('<span style="color: red">File error!</span>')
 
     def update_display(self, data_window: np.ndarray) -> None:
         """Processes and displays a new window of data.
