@@ -31,7 +31,8 @@ class StreamExample:
         output_file: str = "./output.hdf5",
         debug: bool = False,
         plot_window_s: float = 0.5,
-        decimation_factor: int = 150,
+        plot_resolution: int = 4000,
+        hardware_downsample: int = 1,
     ) -> None:
         # --- Configuration ---
         self.output_file = output_file
@@ -107,6 +108,26 @@ class StreamExample:
             f"({driver_buffer_duration_s}s)"
         )
 
+        # --- Plotting Decimation ---
+        # Calculate the decimation factor needed to achieve the target plot resolution.
+        samples_in_window = sample_rate_msps * 1e6 * plot_window_s
+        decimation_factor = max(1, int(samples_in_window / plot_resolution))
+        logger.info(
+            f"Plotting with target resolution of {plot_resolution} points. "
+            f"Calculated decimation factor: {decimation_factor}"
+        )
+
+        # --- Hardware Down-sampling ---
+        if hardware_downsample > 1:
+            pico_downsample_ratio = hardware_downsample
+            pico_ratio_mode = "PS5000A_RATIO_MODE_AVERAGE"
+            logger.info(
+                f"Hardware down-sampling (averaging) enabled with ratio {pico_downsample_ratio}."
+            )
+        else:
+            pico_downsample_ratio = 1
+            pico_ratio_mode = "PS5000A_RATIO_MODE_NONE"
+
         # Picoscope hardware settings
         self.pico_resolution = f"PS5000A_DR_{resolution_bits}BIT"
         self.pico_channel_range = channel_range_str
@@ -157,8 +178,8 @@ class StreamExample:
             self.pico_sample_interval_ns,
             self.pico_sample_unit,
             0,  # pre-trigger samples
-            1,  # down-sample ratio    ## TODO we want a cli option here?? Sample faster but down-sample hardware??!!
-            "PS5000A_RATIO_MODE_NONE",  ## will need to set this then, and the above data buffer??
+            pico_downsample_ratio,
+            pico_ratio_mode,
             self.pico_auto_stop,
             self.pico_auto_stop_stream,
         )
@@ -366,7 +387,16 @@ if __name__ == "__main__":
         "--verbose", "-v", action="store_true", help="Enable debug logging"
     )
     parser.add_argument(
-        "--dec-fac", "-d", type=int, default=150, help="Decimation factor for plotting (default: 150)."
+        "--plot-resolution",
+        type=int,
+        default=4000,
+        help="Target number of points for the plot window (default: 4000).",
+    )
+    parser.add_argument(
+        "--hardware-downsample",
+        type=int,
+        default=1,
+        help="Hardware down-sampling (averaging) ratio. 1 for none (default: 1).",
     )
     args = parser.parse_args()
 
@@ -393,7 +423,8 @@ if __name__ == "__main__":
             output_file=args.output,
             debug=args.verbose,
             plot_window_s=args.plot_window,
-            decimation_factor=args.dec_fac,
+            plot_resolution=args.plot_resolution,
+            hardware_downsample=args.hardware_downsample,
         )
         streamer.run()
     except RuntimeError as e:
