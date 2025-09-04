@@ -345,7 +345,7 @@ class Streamer:
             plotter_command = [
                 sys.executable,
                 "-m",
-                "dfplot",
+                "picostream.dfplot",
                 self.output_file,
                 "--window",
                 str(self.plot_window_s),
