@@ -253,7 +253,6 @@ class PicoDevice:
             "resolution": self.resolution,
             "sample_interval_ns": self.sample_int.value if self.sample_int else None,
             "voltage_range_v": self.voltage_range_v,
-            "max_adc": self.max_adc.value,
             "channel_a_coupling": self.channel_a_coupling,
             "channel_a_range": self.channel_a_range_str,
             "downsample_mode": self.downsample_mode,
