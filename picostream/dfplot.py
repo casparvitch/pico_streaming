@@ -59,6 +59,7 @@ class HDF5LivePlotter(QMainWindow):
         # --- UI State ---
         self.heartbeat_chars: List[str] = ["|", "/", "-", "\\"]
         self.heartbeat_index: int = 0
+        self.is_saturated: bool = False
 
         # --- Data Buffers ---
         self.display_data: np.ndarray = np.array([])
@@ -115,6 +116,7 @@ class HDF5LivePlotter(QMainWindow):
         """Sets up the main window, widgets, and plot layout."""
         self.setWindowTitle("PicoScope Live Plotter - HDF5 Reader")
         self.setGeometry(100, 100, 1200, 800)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
         # Central widget
         central_widget = QWidget()
@@ -128,6 +130,7 @@ class HDF5LivePlotter(QMainWindow):
         self.rate_label = QLabel("Rate: -")
         self.plotter_latency_label = QLabel("Plotter Latency: 0 ms")
         self.error_label = QLabel("Errors: 0")
+        self.saturation_label = QLabel("Saturation: -")
         self.acq_status_label = QLabel(
             '<span style="color: orange">Waiting for file...</span>'
         )
@@ -140,6 +143,7 @@ class HDF5LivePlotter(QMainWindow):
             self.rate_label,
             self.plotter_latency_label,
             self.error_label,
+            self.saturation_label,
             self.acq_status_label,
         ]:
             label.setFont(font)
@@ -148,6 +152,8 @@ class HDF5LivePlotter(QMainWindow):
         status_layout.addWidget(self.heartbeat_label)
         status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.error_label)
+        status_layout.addWidget(QLabel(" | "))
+        status_layout.addWidget(self.saturation_label)
         status_layout.addWidget(QLabel(" | "))
         status_layout.addWidget(self.samples_label)
         status_layout.addWidget(QLabel(" | "))
@@ -241,6 +247,13 @@ class HDF5LivePlotter(QMainWindow):
         data_window = dataset[start_index:current_size]
         self.file_read_count += 1
 
+        # Check for ADC saturation
+        if self.max_adc is not None:
+            # Using np.any for efficiency
+            self.is_saturated = np.any(data_window >= self.max_adc) or np.any(
+                data_window <= -self.max_adc
+            )
+
         logger.debug(
             f"Update {self.update_count}: Reading window of {len(data_window):,} samples from index {start_index:,}"
         )
@@ -286,6 +299,18 @@ class HDF5LivePlotter(QMainWindow):
         self.error_label.setText(
             f'<span style="color: {error_color}">Errors: {total_errors}</span>'
         )
+
+        # Saturation status
+        if self.max_adc is None:
+            self.saturation_label.setText("Saturation: -")
+        elif self.is_saturated:
+            self.saturation_label.setText(
+                '<span style="color: red">Saturation: CLIPPING</span>'
+            )
+        else:
+            self.saturation_label.setText(
+                '<span style="color: green">Saturation: OK</span>'
+            )
 
     def _update_rate_label(self, current_size: int) -> None:
         """Check and update acquisition rate status."""

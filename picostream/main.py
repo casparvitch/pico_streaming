@@ -61,15 +61,17 @@ class Streamer:
         # Dynamically size buffers to hold a specific duration of data. This makes
         # memory usage proportional to the data rate, providing a consistent
         # time-based buffer to handle processing latencies.
+        effective_rate_sps = (sample_rate_msps * 1e6) / pico_downsample_ratio
 
         # Consumer buffers (for writing to HDF5) are sized to hold 1 second of data.
         # This is a good balance, as larger buffers lead to more efficient disk writes
-        # but use more RAM. Note: This is sized based on the pre-downsample rate,
-        # making it a safe upper bound.
+        # but use more RAM.
         consumer_buffer_duration_s = 1.0
         self.consumer_buffer_size = int(
-            sample_rate_msps * 1e6 * consumer_buffer_duration_s
+            effective_rate_sps * consumer_buffer_duration_s
         )
+        if downsample_mode == "aggregate":
+            self.consumer_buffer_size *= 2
         self.consumer_num_buffers = 5  # A pool of 5 buffers
 
         # The Picoscope driver buffer is sized to hold 0.5 seconds of data. This
@@ -77,7 +79,7 @@ class Streamer:
         # that the application receives data in timely chunks, reducing latency.
         driver_buffer_duration_s = 0.5
         self.pico_driver_buffer_size = int(
-            sample_rate_msps * 1e6 * driver_buffer_duration_s
+            effective_rate_sps * driver_buffer_duration_s
         )
         self.pico_driver_num_buffers = (
             1  # A single large buffer is efficient for the driver
@@ -85,16 +87,15 @@ class Streamer:
 
         logger.info(
             f"Consumer buffer sized to {self.consumer_buffer_size:,} samples "
-            f"({consumer_buffer_duration_s}s)"
+            f"({consumer_buffer_duration_s}s at effective rate)"
         )
         logger.info(
             f"Pico driver buffer sized to {self.pico_driver_buffer_size:,} samples "
-            f"({driver_buffer_duration_s}s)"
+            f"({driver_buffer_duration_s}s at effective rate)"
         )
 
         # --- Plotting Decimation ---
         # Calculate the decimation factor needed to achieve the target number of plot points.
-        effective_rate_sps = (sample_rate_msps * 1e6) / pico_downsample_ratio
         points_per_timestep = 2 if downsample_mode == "aggregate" else 1
         samples_in_window = effective_rate_sps * plot_window_s * points_per_timestep
         self.decimation_factor = max(1, int(samples_in_window / plot_points))
@@ -146,9 +147,7 @@ class Streamer:
         self.pico_device.set_channel(
             "PS5000A_CHANNEL_B", 0, "PS5000A_DC", self.pico_channel_range, 0.0
         )
-        self.pico_device.set_data_buffer(
-            "PS5000A_CHANNEL_A", 0, "PS5000A_RATIO_MODE_NONE"
-        )
+        self.pico_device.set_data_buffer("PS5000A_CHANNEL_A", 0, pico_ratio_mode)
         self.pico_device.configure_streaming_var(
             self.pico_sample_interval_ns,
             self.pico_sample_unit,
@@ -219,11 +218,21 @@ class Streamer:
                 f"Sample rate {sample_rate_msps} MS/s exceeds maximum of {max_rate_msps} MS/s for {resolution_bits}-bit resolution."
             )
 
-        # Check if sample rate is excessive for the analog bandwidth of the selected bit-depth
+        # Check if sample rate is excessive for the analog bandwidth.
+        # Bandwidth is dependent on both resolution and voltage range.
+        # (Based on PicoScope 5000A/B Series datasheet)
+        inv_voltage_map = {v: k for k, v in VOLTAGE_RANGE_MAP.items()}
+        voltage_v = inv_voltage_map.get(channel_range_str, 0)
+
         if resolution_bits == 16:
-            bandwidth_mhz = 100
-        else:
-            bandwidth_mhz = 60
+            bandwidth_mhz = 20  # 20 MHz for all ranges
+        elif resolution_bits == 15:
+            # Bandwidth is 70MHz for < ±5V, 60MHz for >= ±5V
+            bandwidth_mhz = 70 if voltage_v < 5.0 else 60
+        else:  # 8-14 bits
+            # Bandwidth is 100MHz for < ±5V, 60MHz for >= ±5V
+            bandwidth_mhz = 100 if voltage_v < 5.0 else 60
+
         # Nyquist rate is 2x bandwidth. A common rule of thumb is 3-5x.
         # Warn if sampling faster than 5x the analog bandwidth.
         if sample_rate_msps > 5 * bandwidth_mhz:
@@ -239,15 +248,6 @@ class Streamer:
             )
 
         if hardware_downsample > 1:
-            if (
-                downsample_mode == "average"
-                and (hardware_downsample & (hardware_downsample - 1)) != 0
-            ):
-                raise ValueError(
-                    "Hardware downsample ratio must be a power of two "
-                    + "for 'average' mode."
-                )
-
             pico_downsample_ratio = hardware_downsample
             pico_ratio_mode = f"PS5000A_RATIO_MODE_{downsample_mode.upper()}"
             logger.info(
@@ -484,6 +484,7 @@ def main(
         output = f"./output_{timestamp}.hdf5"
 
     logger.info(f"Output file: {output}")
+    logger.info(f"Selected voltage range: {rangev}V -> {channel_range_str}")
 
     try:
         # Create and run the streamer

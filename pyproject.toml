@@ -22,4 +22,3 @@ packages = ["picostream"]  # List the package names directly
 
 [project.scripts]
 picostream = "picostream.main:main"
-picostream-plot = "picostream.dfplot:main"
