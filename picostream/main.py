@@ -400,8 +400,8 @@ VOLTAGE_RANGE_MAP = {
     help="Resolution in bits. [default: 12]",
 )
 @click.option(
-    "--range",
-    "voltage_range",
+    "--rangev",
+    "-r",
     type=click.Choice([str(k) for k in sorted(VOLTAGE_RANGE_MAP.keys())]),
     default="20.0",
     help=f"Voltage range in Volts. [default: 20.0]",
@@ -431,13 +431,14 @@ VOLTAGE_RANGE_MAP = {
 )
 @click.option(
     "--plot-pts",
-    "plot_points",
+    "-p",
     type=int,
     default=4000,
     help="Target number of points for the plot window. [default: 4000]",
 )
 @click.option(
     "--hardware-downsample",
+    "-h",
     type=int,
     default=1,
     help="Hardware down-sampling ratio (power of 2 for 'average' mode). [default: 1]",
@@ -451,18 +452,18 @@ VOLTAGE_RANGE_MAP = {
 def main(
     sample_rate: float,
     resolution: str,
-    voltage_range: str,
+    rangev: str,
     plot: bool,
     output: Optional[str],
     plot_window: float,
     verbose: bool,
-    plot_points: int,
+    plot_pts: int,
     hardware_downsample: int,
     downsample_mode: str,
 ) -> None:
     """High-speed data acquisition tool for Picoscope 5000a series."""
     # --- Argument Validation and Processing ---
-    channel_range_str = VOLTAGE_RANGE_MAP[float(voltage_range)]
+    channel_range_str = VOLTAGE_RANGE_MAP[float(rangev)]
     resolution_bits = int(resolution)
 
     # Configure logging
@@ -488,7 +489,7 @@ def main(
             output_file=output,
             debug=verbose,
             plot_window_s=plot_window,
-            plot_points=plot_points,
+            plot_points=plot_pts,
             hardware_downsample=hardware_downsample,
             downsample_mode=downsample_mode,
         )
