@@ -118,3 +118,8 @@ with h5py.File('my_data.hdf5', 'r') as f:
 -   **"File not found" errors (plotter)**: Ensure the acquisition script (`picostream`) is running and has created the HDF5 file before the plotter tries to read it.
 -   **Plotting window not appearing**: Verify `PyQt5` and `pyqtgraph` are installed. If using SSH, ensure X11 forwarding is enabled (`ssh -X user@host`).
 -   **Performance Issues**: If the system is struggling, run acquisition with the `--no-plot` flag. You can also reduce the GUI workload by decreasing the number of plotted points with `--plot-pts`.
+
+
+# Pico status
+
+See https://www.picotech.com/helpfiles/pl1000-api/pico_statusvalues.html for table
