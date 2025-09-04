@@ -61,14 +61,14 @@ class Streamer:
         # Dynamically size buffers to hold a specific duration of data. This makes
         # memory usage proportional to the data rate, providing a consistent
         # time-based buffer to handle processing latencies.
+        effective_rate_sps = (sample_rate_msps * 1e6) / pico_downsample_ratio
 
         # Consumer buffers (for writing to HDF5) are sized to hold 1 second of data.
         # This is a good balance, as larger buffers lead to more efficient disk writes
-        # but use more RAM. Note: This is sized based on the pre-downsample rate,
-        # making it a safe upper bound.
+        # but use more RAM.
         consumer_buffer_duration_s = 1.0
         self.consumer_buffer_size = int(
-            sample_rate_msps * 1e6 * consumer_buffer_duration_s
+            effective_rate_sps * consumer_buffer_duration_s
         )
         if downsample_mode == "aggregate":
             self.consumer_buffer_size *= 2
@@ -79,7 +79,7 @@ class Streamer:
         # that the application receives data in timely chunks, reducing latency.
         driver_buffer_duration_s = 0.5
         self.pico_driver_buffer_size = int(
-            sample_rate_msps * 1e6 * driver_buffer_duration_s
+            effective_rate_sps * driver_buffer_duration_s
         )
         self.pico_driver_num_buffers = (
             1  # A single large buffer is efficient for the driver
@@ -87,16 +87,15 @@ class Streamer:
 
         logger.info(
             f"Consumer buffer sized to {self.consumer_buffer_size:,} samples "
-            f"({consumer_buffer_duration_s}s)"
+            f"({consumer_buffer_duration_s}s at effective rate)"
         )
         logger.info(
             f"Pico driver buffer sized to {self.pico_driver_buffer_size:,} samples "
-            f"({driver_buffer_duration_s}s)"
+            f"({driver_buffer_duration_s}s at effective rate)"
         )
 
         # --- Plotting Decimation ---
         # Calculate the decimation factor needed to achieve the target number of plot points.
-        effective_rate_sps = (sample_rate_msps * 1e6) / pico_downsample_ratio
         points_per_timestep = 2 if downsample_mode == "aggregate" else 1
         samples_in_window = effective_rate_sps * plot_window_s * points_per_timestep
         self.decimation_factor = max(1, int(samples_in_window / plot_points))
@@ -148,9 +147,7 @@ class Streamer:
         self.pico_device.set_channel(
             "PS5000A_CHANNEL_B", 0, "PS5000A_DC", self.pico_channel_range, 0.0
         )
-        self.pico_device.set_data_buffer(
-            "PS5000A_CHANNEL_A", 0, "PS5000A_RATIO_MODE_NONE"
-        )
+        self.pico_device.set_data_buffer("PS5000A_CHANNEL_A", 0, pico_ratio_mode)
         self.pico_device.configure_streaming_var(
             self.pico_sample_interval_ns,
             self.pico_sample_unit,
