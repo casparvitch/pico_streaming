@@ -241,15 +241,6 @@ class Streamer:
             )
 
         if hardware_downsample > 1:
-            if (
-                downsample_mode == "average"
-                and (hardware_downsample & (hardware_downsample - 1)) != 0
-            ):
-                raise ValueError(
-                    "Hardware downsample ratio must be a power of two "
-                    + "for 'average' mode."
-                )
-
             pico_downsample_ratio = hardware_downsample
             pico_ratio_mode = f"PS5000A_RATIO_MODE_{downsample_mode.upper()}"
             logger.info(
