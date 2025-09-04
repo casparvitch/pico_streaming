@@ -14,8 +14,8 @@ import h5py
 import numpy as np
 from loguru import logger
 
-from consumer import Consumer
-from pico import PicoDevice
+from .consumer import Consumer
+from .pico import PicoDevice
 
 
 class Streamer:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "picostream"
-version = "1.0.0"
+version = "0.2.0"
 dependencies = [
     "numpy",
     "loguru",
@@ -16,5 +16,9 @@ dependencies = [
     "click",
 ]
 
+
+[tool.setuptools]
+packages = ["picostream"]  # List the package names directly
+
 [project.scripts]
-picostream = "main:main"
+picostream = "picostream.main:main"

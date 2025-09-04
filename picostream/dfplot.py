@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from conversion_utils import adc_to_mV, min_max_decimate_numba
+from .conversion_utils import adc_to_mV, min_max_decimate_numba
 
 
 class HDF5LivePlotter(QMainWindow):
