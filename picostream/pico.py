@@ -422,6 +422,9 @@ class PicoDevice:
             elif status not in [
                 PICO_STATUS["PICO_OK"],
                 PICO_STATUS["PICO_NO_SAMPLES_AVAILABLE"],
+                PICO_STATUS["PICO_BUSY"],
+                PICO_STATUS["PICO_DATA_NOT_AVAILABLE"],
+                PICO_STATUS["PICO_DRIVE_FUNCTION"],
             ]:
                 check_status(status, "ps5000aGetStreamingLatestValues")
 
