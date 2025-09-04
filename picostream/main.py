@@ -367,11 +367,11 @@ VOLTAGE_RANGE_MAP = {
     0.1: "PS5000A_100MV",
     0.2: "PS5000A_200MV",
     0.5: "PS5000A_500MV",
-    1.0: "PS5000A_1V",
-    2.0: "PS5000A_2V",
-    5.0: "PS5000A_5V",
-    10.0: "PS5000A_10V",
-    20.0: "PS5000A_20V",
+    1: "PS5000A_1V",
+    2: "PS5000A_2V",
+    5: "PS5000A_5V",
+    10: "PS5000A_10V",
+    20: "PS5000A_20V",
 }
 
 
@@ -394,8 +394,8 @@ VOLTAGE_RANGE_MAP = {
     "--rangev",
     "-r",
     type=click.Choice([str(k) for k in sorted(VOLTAGE_RANGE_MAP.keys())]),
-    default="20.0",
-    help=f"Voltage range in Volts. [default: 20.0]",
+    default="20",
+    help=f"Voltage range in Volts. [default: 20]",
 )
 @click.option(
     "--plot/--no-plot",
@@ -438,7 +438,7 @@ VOLTAGE_RANGE_MAP = {
     "--downsample-mode",
     "-m",
     type=click.Choice(["average", "aggregate"]),
-    default="voltage_range_v",
+    default="average",
     help="Hardware down-sampling mode. [default: average]",
 )
 def main(
