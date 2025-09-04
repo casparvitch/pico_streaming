@@ -23,9 +23,16 @@ def adc_to_mV(
         A NumPy array of the same shape as `adc_data`, with values converted
         to millivolts.
     """
+    # The PicoScope 5000a series returns data scaled to a 16-bit integer range
+    # regardless of the selected resolution. Therefore, the conversion must
+    # always use the maximum value for a 16-bit signed integer (32767).
+    # The `max_adc_value` argument, which reflects the device's resolution-
+    # specific maximum (e.g., 2047 for 12-bit), is incorrect for this scaling
+    # and is ignored.
     voltage_range_mv = voltage_range_v * 1000.0  # Convert Volts to milliVolts
+    fixed_max_adc = 32767.0
     # Scale ADC counts to millivolts. Cast to float64 for precision.
-    return (adc_data.astype(np.float64) * voltage_range_mv) / max_adc_value
+    return (adc_data.astype(np.float64) * voltage_range_mv) / fixed_max_adc
 
 
 @nb.jit(nopython=True, fastmath=True)
