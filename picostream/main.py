@@ -70,6 +70,8 @@ class Streamer:
         self.consumer_buffer_size = int(
             sample_rate_msps * 1e6 * consumer_buffer_duration_s
         )
+        if downsample_mode == "aggregate":
+            self.consumer_buffer_size *= 2
         self.consumer_num_buffers = 5  # A pool of 5 buffers
 
         # The Picoscope driver buffer is sized to hold 0.5 seconds of data. This
