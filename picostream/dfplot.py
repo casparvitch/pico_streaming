@@ -3,8 +3,8 @@ from __future__ import annotations
 import sys
 import time
 from typing import List, Optional
+import argparse
 
-import click
 import h5py
 import numpy as np
 import pyqtgraph as pg
@@ -535,29 +535,33 @@ class HDF5LivePlotter(QMainWindow):
             super().keyPressEvent(event)
 
 
-@click.command()
-@click.argument("hdf5_path", type=click.Path(dir_okay=False))
-@click.option(
-    "--window",
-    type=float,
-    default=0.5,
-    help="Display window in seconds. [default: 0.5]",
-)
-@click.option(
-    "--decimation",
-    type=int,
-    default=150,
-    help="Decimation factor for plotting. [default: 150]",
-)
-def main(hdf5_path: str, window: float, decimation: int) -> None:
+def main() -> None:
     """Standalone HDF5 live plotter."""
+    # Create the QApplication instance FIRST.
+    app = QApplication(sys.argv)
+
+    parser = argparse.ArgumentParser(description="Standalone HDF5 live plotter.")
+    parser.add_argument("hdf5_path", type=str, help="Path to the HDF5 file.")
+    parser.add_argument(
+        "--window",
+        type=float,
+        default=0.5,
+        help="Display window in seconds. [default: 0.5]",
+    )
+    parser.add_argument(
+        "--decimation",
+        type=int,
+        default=150,
+        help="Decimation factor for plotting. [default: 150]",
+    )
+    args = parser.parse_args()
+
     logger.info("Plotter process starting")
     try:
-        app = QApplication([])
         plotter = HDF5LivePlotter(
-            hdf5_path=hdf5_path,
-            display_window_seconds=window,
-            decimation_factor=decimation,
+            hdf5_path=args.hdf5_path,
+            display_window_seconds=args.window,
+            decimation_factor=args.decimation,
         )
         plotter.show()
         sys.exit(app.exec_())

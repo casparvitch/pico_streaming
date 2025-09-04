@@ -343,9 +343,7 @@ class Streamer:
         if self.enable_live_plot:
             # Launch the plotter in a separate process
             plotter_command = [
-                sys.executable,
-                "-m",
-                "picostream.dfplot",
+                "picostream-plot",
                 self.output_file,
                 "--window",
                 str(self.plot_window_s),
