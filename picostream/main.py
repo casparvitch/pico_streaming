@@ -436,8 +436,9 @@ VOLTAGE_RANGE_MAP = {
 )
 @click.option(
     "--downsample-mode",
+    "-m",
     type=click.Choice(["average", "aggregate"]),
-    default="average",
+    default="voltage_range_v",
     help="Hardware down-sampling mode. [default: average]",
 )
 def main(
