@@ -461,8 +461,9 @@ class HDF5LivePlotter(QMainWindow):
         # Update the X-axis range to match the new time axis, creating a "snapshot" effect.
         self.plot_widget.setXRange(time_axis[0], time_axis[-1], padding=0)
 
-        # Auto-scale the Y-axis occasionally.
-        if self.display_update_count % 10 == 1:
+        # Auto-scale the Y-axis occasionally. 
+        # TODO put to larger number and allow user to update with key press
+        if self.display_update_count % 5 == 1:
             self.plot_widget.enableAutoRange(axis="y")
 
     def _format_rate_sps(self, rate_sps: float) -> str:
