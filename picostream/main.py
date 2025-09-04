@@ -184,7 +184,10 @@ class Streamer:
         )
 
         # --- Signal Handling ---
-        signal.signal(signal.SIGINT, self.signal_handler)
+        # Only set the signal handler if not in GUI mode.
+        # In GUI mode, the main function will handle signals to quit the Qt app.
+        if not self.enable_live_plot:
+            signal.signal(signal.SIGINT, self.signal_handler)
 
         # --- Live Plotting (optional) ---
         self.start_time: Optional[float] = None
@@ -459,6 +462,14 @@ def main(
         from PyQt5.QtWidgets import QApplication
 
         app = QApplication(sys.argv)
+
+        # When plotting, SIGINT should gracefully close the Qt application.
+        # The main loop will then handle the shutdown.
+        def sigint_handler(_sig: int, _frame: Optional[object]) -> None:
+            logger.warning("Ctrl+C detected. Closing application.")
+            QApplication.quit()
+
+        signal.signal(signal.SIGINT, sigint_handler)
 
     # Configure logging
     logger.remove()

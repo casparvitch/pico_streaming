@@ -525,11 +525,13 @@ class HDF5LivePlotter(QMainWindow):
                 return np.linspace(start_time, end_time, n_samples)
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        """Handles the window close event for a clean shutdown."""
-        logger.info("Close event received. Stopping timer and signaling shutdown.")
+        """Handles the window close event.
+
+        Stops the plot's internal timer and allows the Qt event loop to exit.
+        The main application will handle the graceful shutdown.
+        """
+        logger.info("Close event received. Stopping timer.")
         self.timer.stop()
-        if self.shutdown_event:
-            self.shutdown_event.set()
         event.accept()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
