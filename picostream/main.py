@@ -6,7 +6,10 @@ import sys
 import threading
 import time
 from datetime import datetime
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from PyQt5.QtWidgets import QApplication
 
 import click
 import h5py
@@ -321,7 +324,7 @@ class Streamer:
                 if thread.is_alive():
                     logger.critical(f"{thread_name} failed to terminate.")
 
-    def run(self, app: Optional["QApplication"] = None) -> None:
+    def run(self, app: Optional[QApplication] = None) -> None:
         """Starts the acquisition threads and optionally the Qt event loop."""
         # Start acquisition threads
         self.start_time = time.time()
@@ -451,7 +454,7 @@ def main(
     channel_range_str = VOLTAGE_RANGE_MAP[float(rangev)]
     resolution_bits = int(resolution)
 
-    app: Optional["QApplication"] = None
+    app: Optional[QApplication] = None
     if plot:
         from PyQt5.QtWidgets import QApplication
 
