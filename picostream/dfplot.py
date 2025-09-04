@@ -70,7 +70,6 @@ class HDF5LivePlotter(QMainWindow):
         self.sample_interval_ns: float = 16.0  # Default, will be read from file
         self.hardware_downsample_ratio: int = 1
         self.ch_range: Optional[int] = None
-        self.max_adc: Optional[int] = None
         self.voltage_range_v: Optional[float] = None
         self.downsample_mode: Optional[str] = None
 
@@ -214,7 +213,6 @@ class HDF5LivePlotter(QMainWindow):
                 base_sample_interval_ns * self.hardware_downsample_ratio
             )
 
-            self.max_adc = hdf5_file.attrs["max_adc"]
             self.voltage_range_v = hdf5_file.attrs["voltage_range_v"]
             self.downsample_mode = hdf5_file.attrs.get("downsample_mode", "average")
 
@@ -247,11 +245,11 @@ class HDF5LivePlotter(QMainWindow):
         self.file_read_count += 1
 
         # Check for ADC saturation
-        if self.max_adc is not None:
-            # Using np.any for efficiency
-            self.is_saturated = np.any(data_window >= self.max_adc) or np.any(
-                data_window <= -self.max_adc
-            )
+        # The Picoscope driver scales data to 16-bit, so saturation occurs at the 16-bit limit.
+        FIXED_MAX_ADC = 32767
+        self.is_saturated = np.any(data_window >= FIXED_MAX_ADC) or np.any(
+            data_window <= -FIXED_MAX_ADC
+        )
 
         logger.debug(
             f"Update {self.update_count}: Reading window of {len(data_window):,} samples from index {start_index:,}"
@@ -300,7 +298,7 @@ class HDF5LivePlotter(QMainWindow):
         )
 
         # Saturation status
-        if self.max_adc is None:
+        if self.voltage_range_v is None:
             self.saturation_label.setText("Saturation: -")
         elif self.is_saturated:
             self.saturation_label.setText(
@@ -425,16 +423,12 @@ class HDF5LivePlotter(QMainWindow):
 
         # Debug: Log ADC values and metadata
         logger.debug(f"ADC range: {decimated_data.min()} to {decimated_data.max()}")
-        logger.debug(
-            f"voltage_range_v: {self.voltage_range_v}, max_adc: {self.max_adc}"
-        )
+        logger.debug(f"voltage_range_v: {self.voltage_range_v}")
 
         # Convert to voltage if we have calibration data
-        if self.voltage_range_v is not None and self.max_adc is not None:
+        if self.voltage_range_v is not None:
             try:
-                voltage_data = adc_to_mV(
-                    decimated_data, self.voltage_range_v, self.max_adc
-                )
+                voltage_data = adc_to_mV(decimated_data, self.voltage_range_v)
                 logger.debug(
                     f"Voltage conversion successful, range: {voltage_data.min():.1f} to {voltage_data.max():.1f} mV"
                 )
@@ -444,7 +438,7 @@ class HDF5LivePlotter(QMainWindow):
                 voltage_data = decimated_data.astype(float)
         else:
             logger.warning(
-                "Missing calibration data (voltage_range_v or max_adc), using raw ADC values"
+                "Missing calibration data (voltage_range_v), using raw ADC values"
             )
             voltage_data = decimated_data.astype(float)
 
