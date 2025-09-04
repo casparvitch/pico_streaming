@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import queue
 import signal
-import subprocess
 import sys
 import threading
 import time
@@ -185,7 +184,6 @@ class Streamer:
         signal.signal(signal.SIGINT, self.signal_handler)
 
         # --- Live Plotting (optional) ---
-        self.plotter_process: Optional[subprocess.Popen] = None
         self.start_time: Optional[float] = None
 
     def _validate_config(
@@ -275,15 +273,6 @@ class Streamer:
 
         logger.info("Stopping data acquisition and saving...")
 
-        if self.plotter_process:
-            logger.info("Terminating plotter process...")
-            self.plotter_process.terminate()
-            try:
-                self.plotter_process.wait(timeout=2.0)
-            except subprocess.TimeoutExpired:
-                logger.warning("Plotter process did not terminate gracefully.")
-                self.plotter_process.kill()
-
         self._join_threads()
         self.pico_device.close_device()
 
@@ -332,40 +321,35 @@ class Streamer:
                 if thread.is_alive():
                     logger.critical(f"{thread_name} failed to terminate.")
 
-    def run(self) -> None:
-        """Starts the acquisition threads and (if enab.) the Qt event loop."""
+    def run(self, app: Optional["QApplication"] = None) -> None:
+        """Starts the acquisition threads and optionally the Qt event loop."""
         # Start acquisition threads
         self.start_time = time.time()
         self.consumer_thread.start()
         self.pico_thread.start()
 
         # Handle Qt event loop if plotting is enabled
-        if self.enable_live_plot:
-            # Launch the plotter in a separate process
-            plotter_command = [
-                "picostream-plot",
-                self.output_file,
-                "--window",
-                str(self.plot_window_s),
-                "--decimation",
-                str(self.decimation_factor),
-            ]
-            logger.info(f"Launching plotter: {' '.join(plotter_command)}")
-            # Launch in a new session to isolate it from terminal signals (Ctrl+C)
-            self.plotter_process = subprocess.Popen(
-                plotter_command, start_new_session=True
+        if self.enable_live_plot and app:
+            from .dfplot import HDF5LivePlotter
+
+            plotter = HDF5LivePlotter(
+                hdf5_path=self.output_file,
+                display_window_seconds=self.plot_window_s,
+                decimation_factor=self.decimation_factor,
+                shutdown_event=self.shutdown_event,
             )
+            plotter.show()
 
-        # Wait for threads to complete. This will block until shutdown is called
-        # or acquisition finishes naturally (if auto_stop were enabled).
-        self.consumer_thread.join()
-        self.pico_thread.join()
+            # Run the Qt event loop. This will block until the plot window is closed.
+            app.exec_()
 
-        # If the plotter process was started, ensure it's handled on exit
-        if self.plotter_process and self.plotter_process.poll() is None:
-            logger.info("Acquisition finished, terminating plotter.")
+            # Once the window is closed, the shutdown event should have been set.
+            # We call shutdown() to ensure threads are joined and cleanup happens.
             self.shutdown()
         else:
+            # Original non-GUI behavior
+            self.consumer_thread.join()
+            self.pico_thread.join()
             logger.success("Acquisition complete!")
 
 
@@ -467,6 +451,12 @@ def main(
     channel_range_str = VOLTAGE_RANGE_MAP[float(rangev)]
     resolution_bits = int(resolution)
 
+    app: Optional["QApplication"] = None
+    if plot:
+        from PyQt5.QtWidgets import QApplication
+
+        app = QApplication(sys.argv)
+
     # Configure logging
     logger.remove()
     log_level = "DEBUG" if verbose else "INFO"
@@ -494,7 +484,7 @@ def main(
             hardware_downsample=hardware_downsample,
             downsample_mode=downsample_mode,
         )
-        streamer.run()
+        streamer.run(app)
     except RuntimeError as e:
         if "PICO_NOT_FOUND" in str(e):
             logger.critical(

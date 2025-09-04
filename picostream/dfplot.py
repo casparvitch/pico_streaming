@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 import time
 from typing import List, Optional
 import argparse
@@ -35,6 +36,7 @@ class HDF5LivePlotter(QMainWindow):
         update_interval_ms: int = 50,
         display_window_seconds: float = 0.5,
         decimation_factor: int = 150,
+        shutdown_event: Optional[threading.Event] = None,
     ) -> None:
         """Initializes the HDF5LivePlotter window.
 
@@ -43,6 +45,7 @@ class HDF5LivePlotter(QMainWindow):
             update_interval_ms: How often to check the file for updates (in ms).
             display_window_seconds: The time duration of data to display.
             decimation_factor: The factor by which to decimate data for plotting.
+            shutdown_event: An event to signal graceful shutdown to the main application.
         """
         super().__init__()
 
@@ -51,6 +54,7 @@ class HDF5LivePlotter(QMainWindow):
         self.update_interval_ms: int = update_interval_ms
         self.display_window_seconds: float = display_window_seconds
         self.decimation_factor: int = decimation_factor
+        self.shutdown_event: Optional[threading.Event] = shutdown_event
 
         # --- UI State ---
         self.heartbeat_chars: List[str] = ["|", "/", "-", "\\"]
@@ -522,8 +526,10 @@ class HDF5LivePlotter(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """Handles the window close event for a clean shutdown."""
-        logger.info("Close event received. Stopping timer.")
+        logger.info("Close event received. Stopping timer and signaling shutdown.")
         self.timer.stop()
+        if self.shutdown_event:
+            self.shutdown_event.set()
         event.accept()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
