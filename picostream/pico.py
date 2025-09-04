@@ -133,7 +133,8 @@ class PicoDevice:
         # --- Status and Performance Metrics ---
         self.captured_samples: int = 0
         self.empty_pro_queue_count: int = 0
-        self.overflow_count: int = 0
+        self.overvoltage_count: int = 0
+        self.hardware_buffer_overflow_count: int = 0
         self.callback_durations: List[float] = []
 
         # --- Aggregate Mode Performance Tracking ---
@@ -294,7 +295,7 @@ class PicoDevice:
         _handle: int,
         noOfSamples: int,
         startIndex: int,
-        _overflow: int,
+        overvoltage_flags: int,
         _triggerAt: int,
         _triggered: int,
         _autoStop: int,
@@ -310,10 +311,10 @@ class PicoDevice:
         Note: This function is called from a thread created by the Picoscope SDK.
         It must be fast and thread-safe.
         """
-        if _overflow:
-            self.overflow_count += 1
+        if overvoltage_flags:
+            self.overvoltage_count += 1
             logger.warning(
-                "Picoscope hardware buffer overflow detected. Data has been lost."
+                "Picoscope ADC over-range detected (saturation/clipping)."
             )
 
         # Stop processing if a shutdown is requested.
@@ -409,7 +410,21 @@ class PicoDevice:
 
         # This loop polls the SDK for new data, which triggers the callback.
         while not self.shutdown_event.is_set():
-            ps.ps5000aGetStreamingLatestValues(self.handle, self.callbackFuncPtr, None)
+            status = ps.ps5000aGetStreamingLatestValues(
+                self.handle, self.callbackFuncPtr, None
+            )
+
+            if status == PICO_STATUS["PICO_BUFFER_STALL"]:
+                self.hardware_buffer_overflow_count += 1
+                logger.critical(
+                    "Picoscope hardware buffer overflow occurred. Data was lost."
+                )
+            elif status not in [
+                PICO_STATUS["PICO_OK"],
+                PICO_STATUS["PICO_NO_SAMPLES_AVAILABLE"],
+            ]:
+                check_status(status, "ps5000aGetStreamingLatestValues")
+
             # Yield the GIL to other threads.
             time.sleep(0.001)
 
@@ -417,7 +432,15 @@ class PicoDevice:
         logger.info(
             f"Producer couldn't obtain an empty queue {self.empty_pro_queue_count} times."
         )
-        logger.info(f"Picoscope hardware overflowed {self.overflow_count} times.")
+        if self.hardware_buffer_overflow_count > 0:
+            logger.critical(
+                f"Picoscope hardware buffer overflowed {self.hardware_buffer_overflow_count} times. "
+                "This indicates the application could not process data fast enough from the driver."
+            )
+        if self.overvoltage_count > 0:
+            logger.warning(
+                f"Picoscope ADC over-ranged (clipped) {self.overvoltage_count} times."
+            )
         if self.callback_durations:
             logger.info("--- Callback Performance ---")
             logger.info(f"Total callbacks: {len(self.callback_durations)}")
