@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	<!-- Help+Manual Premium Pack Version 3.35 (c) 2015-2017 by Tim Green all rights reserved -->
+	<title>PICO_STATUS values</title>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" id="pageviewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=yes, minimal-ui" />
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta http-equiv="Pragma" content="no-cache">
+	<meta http-equiv="Expires" content="-1">
+	<meta http-equiv="cache-control" content="no-cache" />	
+	<meta http-equiv="Content-Type" content="text/html" charset="UTF-8" />
+	<meta name="generator" content="Help &amp; Manual" />
+	<meta name="keywords" content="" />
+	<meta name="description" content="Every function in the PicoLog 1000 Series API returns an error code from the following list of PICO_STATUS values defined in PicoStatus.h:" />
+	<meta name="author" content="" />
+	<meta name="msapplication-tap-highlight" content="no" />
+	<link type="text/css" href="./css/hmprojectstyles.css" rel="stylesheet" />
+	<link rel="stylesheet" href="./css/fontello.css">
+	<script type="text/javascript">
+/*! Help & Manual WebHelp 3 Script functions
+Copyright (c) 2015-2017 by Tim Green. All rights reserved. Contact tg@it-authoring.com
+*/
+var hmDevice={mobileSleepReload:true,compilehash:(function(){var c=0,b="PicoLog 1000 Series Programmer's GuideUser-defined Project ID";for(var a=0;a<b.length;a++){c=c+(b.charCodeAt(a)*(a+2))}return(c*697).toString(32)+"_"})(),hmSetCookie:function(b,f,c){var a="";if(c){var e=new Date();e.setTime(e.getTime()+(c*24*60*60*1000));a="expires="+e.toGMTString()}document.cookie=b+"="+f+"; "+a},hmGetCookie:function(d){var b=d+"=";var a=document.cookie.split(";");for(var e=0;e<a.length;e++){var f=a[e];while(f.charAt(0)==" "){f=f.substring(1)}if(f.indexOf(b)!=-1){return f.substring(b.length,f.length)}}return""},hmDeleteCookie:function(b){var a=b+"=";document.cookie=a+"; expires=Thu, 01 Jan 1970 00:00:00 UTC"}};var storageOK=(function(){var a=Storage&&localStorage&&sessionStorage;if(a){try{localStorage.setItem("testStorage",1);localStorage.removeItem("testStorage");a=true}catch(b){a=false}}return a})();sessionVariable={localS:storageOK,fxVal:function(a){return decodeURIComponent(a)},setPV:function(b,a){if(this.localS){localStorage.setItem(hmDevice.compilehash+b,this.fxVal(a))}else{hmDevice.hmSetCookie(hmDevice.compilehash+b,this.fxVal(a),365)}},setSV:function(b,a){if(this.localS){sessionStorage.setItem(hmDevice.compilehash+b,this.fxVal(a))}else{hmDevice.hmSetCookie(hmDevice.compilehash+b,this.fxVal(a),false)}},getPV:function(a){if(this.localS){if(typeof(localStorage.getItem(hmDevice.compilehash+a))!=="undefined"){return localStorage.getItem(hmDevice.compilehash+a)}else{return null}}else{return hmDevice.hmGetCookie(hmDevice.compilehash+a)}},getSV:function(a){if(this.localS){if(typeof(sessionStorage.getItem(hmDevice.compilehash+a))!=="undefined"){return sessionStorage.getItem(hmDevice.compilehash+a)}else{return null}}else{return hmDevice.hmGetCookie(a)}},deletePV:function(a){if(this.localS){localStorage.removeItem(hmDevice.compilehash+a)}else{hmDevice.hmDeleteCookie(hmDevice.compilehash+a)}},deleteSV:function(a){if(this.localS){sessionStorage.removeItem(hmDevice.compilehash+a)}else{hmDevice.hmDeleteCookie(hmDevice.compilehash+a)}}},hmFlags={skinType:"flat"};hmDevice.page="topicpage";hmDevice.baseFontSize=95;hmDevice.fontChangeMax=20;hmDevice.agent=navigator.userAgent.toLowerCase();hmDevice.embedded=(self!=top);hmDevice.platform=navigator.platform.toLowerCase();hmDevice.ipad=/ipad/.test(hmDevice.platform);hmDevice.iphone=/iphone/.test(hmDevice.platform);hmDevice.winphone7=(/windows phone os [7]\.\d\d??; .*?trident\/[5]\.\d\d??; iemobile\/9/.test(hmDevice.agent));hmDevice.winphone=(/windows phone [89]\.\d\d??; .*?trident\/[67]\.\d\d??;.*?touch; /.test(hmDevice.agent));hmDevice.w8desktop=(/windows nt 6\.[2345]|windows nt 10\.[0123456]/m.test(hmDevice.agent));hmDevice.msBrowser=(/edge|trident/m.test(hmDevice.agent));hmDevice.w8metro=(function(){var a=true;try{new ActiveXObject("htmlfile")}catch(b){a=false}return(!a&&hmDevice.w8desktop&&hmDevice.msBrowser)})();hmDevice.touch=!!(("ontouchstart" in window&&!window.opera)||("msmaxtouchppoints" in window.navigator)||("maxtouchppoints" in window.navigator)||(navigator.maxTouchPoints>0)||(navigator.msMaxTouchPoints>0));hmDevice.tb=(/tablet/.test(hmDevice.agent)&&(!/trident/.test(hmDevice.agent)||(hmDevice.w8metro&&hmDevice.touch)));hmDevice.goodandroid=(/android.+?applewebkit\/(?:(?:537\.(?:3[6-9]|[4-9][0-9]))|(?:53[8-9]\.[0-9][0-9])|(?:54[0-9]\.[0-9][0-9]))|android.+?gecko\/[345][0-9]\.\d{1,2} firefox/.test(hmDevice.agent));hmDevice.deadandroid=(/android.+?applewebkit\/(?:53[0-6]\.\d{1,2})|firefox\/[0-2]\d\.\d{1,2}/.test(hmDevice.agent));hmDevice.android=(/android/.test(hmDevice.agent)&&!hmDevice.deadandroid);hmDevice.mb=/mobi|mobile/.test(hmDevice.agent);hmDevice.phone=(hmDevice.mb&&!hmDevice.ipad&&!hmDevice.tb);hmDevice.tablet=(hmDevice.ipad||hmDevice.tb||(!hmDevice.phone&&hmDevice.android));hmDevice.aspectRatio=(screen.height/screen.width>1?screen.height/screen.width:screen.width/screen.height).toFixed(2);hmDevice.narrowTablet=(hmDevice.tablet&&hmDevice.aspectRatio>1.4);hmDevice.desktop=((!hmDevice.tablet&&!hmDevice.phone));hmDevice.device=hmDevice.phone?"phone":hmDevice.tablet?"tablet":hmDevice.desktop?"desktop":"default";hmDevice.fontSize=hmDevice.phone?hmDevice.baseFontSize*1.0:hmDevice.tablet?hmDevice.baseFontSize*1.0:hmDevice.desktop?hmDevice.baseFontSize:hmDevice.baseFontSize;hmDevice.maxFontSize=hmDevice.fontSize+hmDevice.fontChangeMax;hmDevice.minFontSize=hmDevice.fontSize-hmDevice.fontChangeMax;if(hmDevice.device!==sessionVariable.getPV("hmDevice")){sessionVariable.setPV("hmDevice",hmDevice.device);sessionVariable.setPV("fontSize",hmDevice.fontSize.toString())}else{var tempSize=sessionVariable.getPV("fontSize");if(tempSize!==null){hmDevice.fontSize=parseInt(tempSize,10)}else{sessionVariable.setPV("fontSize",hmDevice.fontSize.toString())}}hmDevice.cssfile=document.createElement("link");hmDevice.cssfile.rel="stylesheet";hmDevice.cssfile.type="text/css";hmDevice.cssfile.href=hmDevice.phone?"./css/hmwebhelp_main_phone.css":hmDevice.tablet?"./css/hmwebhelp_main_tablet.css":hmDevice.desktop?"./css/hmwebhelp_main_desktop.css":"./css/hmwebhelp_main_default.css";document.getElementsByTagName("head")[0].appendChild(hmDevice.cssfile);
+	hmDevice.pageStylesheet = "./css/hmprojectstyles.css";
+	var hmSearchActive = true,
+		hmIndexActive = true;
+	</script>
+	<style type="text/css">div#fouc{background:#ffffff;position:absolute;top:0;right:0;bottom:0;left:0;z-index:10000;}</style> 
+	<style id="livestyles" type="text/css"></style>
+	<noscript><style type="text/css">
+	div#headerbox * {
+	  white-space: nowrap;
+	  overflow: hidden;
+	  text-overflow: ellipsis;	
+	  }
+	td#topicheadercell {
+	padding: 0;
+	}
+	div#topicheaderwrapper {
+	margin: -6px 0 0 -6px; 
+	padding: 5px;
+	overflow: auto;
+	height: 27px;
+	}
+	div#topicheaderwrapper span {
+		white-space: normal;
+	}
+	td#topicnavcell {
+		float: right;
+	}
+	div#fouc {display: none;}
+	</style>
+	<link rel="stylesheet" type="text/css" href="./css/hmwebhelp_main_default.css" />
+	</noscript>
+	<script id="jqscript" type="text/javascript"></script>
+</head>
+<body><div id="fouc"></div>
+<!--ZOOMSTOP--> 
+	<div id="pagewrapper">
+	<div id="toolbar_updown" class="toolwrapper phone">
+	<img id="toolbar_updown_button" class="toolimg" src="./images/toolbar_updown.svg" alt="Show/Hide Toolbars" border="0" />
+	</div>
+	<div id="headerbox_wrapper">
+	<div id="headerbox">
+<a id="headerlogo" href="https://www.picotech.com/" title="Pico Website" target="_blank"></a>
+<div id="headerwrapper"><p class="page_header" id="hm_pageheader">PicoLog 1000 Series Programmer's Guide</p></div>
+
+
+	<div id="phone_hamburger_icon" class="phone"><i id="phone_hamburger" class="icon icon-menu icon-inverse"></i></div>
+	</div>
+	<div id="header_menu">
+<ul class="topnav">  
+    <li class="phone"><a href="javascript:hmWebHelp.closeTopNav();" data-target="socialsharing.js" data-path="./js/" data-title="Share This Topic" class="popuplink" title="Share this Topic">Share This Topic</a></li>
+    <li class="desk_tablet"><a href="https://www.picotech.com/" target="_blank" title="Main Page">Pico website</a></li>	
+    <li>  
+        <a title="Example code">Example code</a>  
+        <ul class="subnav">  
+            <li><a href="https://github.com/picotech" target="_blank" title="GitHub">GitHub</a></li>
+            <li><a href="https://www.picotech.com/library/picoapps" target="_blank" title="PicoApps">PicoApps</a></li>  
+        </ul>  
+    </li>
+    <li>  
+        <a title="Free resources for programmers">Resources</a>  
+        <ul class="subnav">  
+            <li><a href="https://www.picotech.com/downloads" target="_blank" title="Downloads">Downloads</a></li>  
+            <li><a href="https://www.picotech.com/support/forum38.html" target="_blank" title="Forum">Forum</a></li>  
+            <li><a title="Sources for further information">Information</a>
+                   <ul class="subnav">
+                   <li><a href="https://www.picotech.com/about" target="_blank" title="About Pico">About</a></li>  
+                   <li><a href="https://www.picotech.com/news.html" target="_blank" title="Pico news">News</a></li>  
+                   <li><a href="https://www.picotech.com/about/key-contacts" target="_blank" title="Contact addresses for feedback and support">Contact Us</a></li>
+                   </ul>  		
+            </li>  
+            <li class="desktop tablet">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</li>
+        </ul>
+    </li>
+</ul>    
+
+	</div>
+	</div>
+	<!-- TOPIC CONTENT -->
+	<div id="topicbox">
+	<div id="navigationmenu">
+	<ul id="hamburgermenu">
+	<li id="toggle_fullscreen" class="desktop">
+	<i id="fullscreen_toggle" class="icon icon-resize-full menuimg"></i>
+	<a onclick='hmWebHelp.doFullEmbedWindow(this)' title="Zoom window">
+	<span>Zoom Window Out</span></a>
+	</li> 
+	<li>
+		<i class="icon icon-text-height menuimg"></i>
+		<a onclick="hmWebHelp.extFuncs('fontSize',[true,'global']);" title="Increase Font Size"> 
+		<span>Larger Text</span></a>&nbsp;|&nbsp;<a onclick="hmWebHelp.extFuncs('fontSize',[false,'global']);" title="Decrease Font Size"><span>Smaller Text</span></a>
+	</li>
+	<li class="desktop" id="showhide_pageheader">
+		<i id="showhide_header_icon" class="icon icon-collapse menuimg"></i>
+		<a title="Hide Page Header">
+		<span>Hide Page Header</span></a>
+	</li>
+	<li class="toggles" id="showhide_toggles">
+		<i id="showhide_toggles_icon" class="icon icon-eye menuimg"></i>
+		<a onclick="hmWebHelp.extFuncs('hmDoToggle',{method: 'hmToggleToggles', obj: {speed: 80}});" title="Show/hide Expanding Text Blocks on Page"> 
+		<span>Show Expanding Text</span></a>
+	</li>
+	<li id="hm_printable_version">
+		<i class="icon icon-print menuimg"></i>
+		<a id="hm_printable_link" href="_hm_print_window.htm?pico_statusvalues.html" onclick="hmWebHelp.hamburgerMenu()" target="hm_print_window" title="Display a Printable Version of Current Topic"> 
+		<span>Printable Version</span></a>
+	</li>
+	<li class="desktop server">
+		<i class="icon icon-link menuimg"></i>
+		<a href="javascript:hmWebHelp.hamburgerMenu()" data-target="_hmpermalink.html" data-path="./" data-title="Save Topic Permalink" class="popuplink" title="Copy URL of current topic">
+		<span>Save Permalink URL</span></a>
+	</li> 	
+	</ul>
+			 
+	</div>
+	<div id="topicbody">
+	<!-- HMSKIN BODY START -->
+	<div id="hmpageheader">
+	<table id="topicheadertable">
+	  <tr>
+		<td id="topicheadercell">
+		  <div id="topicheaderwrapper">
+		  <p id="ptopic_breadcrumbs" class="topic_breadcrumbs">Navigation: 
+                  Driver routines
+                  </p>
+                   
+		  <p class="topictitle">PICO_STATUS values</p>
+                  
+                  
+		  </div>
+		</td>
+		<td id="topicnavcell"><span>
+		<a id="atoclink" class="topicnavlink" title="Contents of this topic">
+		<i class="icon icon-list-bullet icon-inverse navimg"></i>
+		<span>Scroll</span></a> 
+		 <a id="topicnavlinkprevious" class="topicnavlink nav" href="pl1000stop.html" title="Go to previous topic">		 <i class="icon icon-angle-circled-left icon-inverse navimg"></i>
+		 <span>Prev</span></a>
+		<a id="topicnavlinkhome" class="topicnavlink nav" href="index.html" title="Go to top topic">
+		<i class="icon icon-angle-circled-up icon-inverse navimg"></i>
+		<span>Top</span></a>
+		<a id="topicnavlinknext" class="topicnavlink nav" href="glossary.html" title="Go to next topic">
+		<i class="icon icon-angle-circled-right icon-inverse navimg"></i>
+		<span>Next</span></a>
+		 <a id="hamburgerlink" class="topicnavlink" title="Additional Functions Menu">
+		 <i class="icon icon-menu icon-inverse navimg"></i>
+		 <span>More</span></a>
+		 </span>
+		 </td>
+	  </tr>
+	</table>
+	</div>
+	<div id="autoTocWrapper" class=""></div> 
+	<div id="hmpagebody">
+	<div id="unclicker"></div>
+	<div id="hmpagebody_scroller">
+<!--ZOOMRESTART--> 
+	<p class="p_Normal" style="page-break-inside: avoid;">Every function in the PicoLog 1000 Series API returns an error code from the following list of <span class="f_Filename">PICO_STATUS</span> values defined in <span class="f_Filename">PicoStatus.h</span>:</p>
+<div style="text-align: left; text-indent: 0; page-break-inside: avoid; padding: 0 0 0 0; margin: 0 0 0.9375rem 0;"><table style="width:100%; border:none; border-spacing:0; border-collapse:collapse;">
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem; font-weight: bold;">Code</span></p>
+<p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem; font-weight: bold;">(hex)</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem; font-weight: bold;">Enum</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem; font-weight: bold;">Description</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">00</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_OK</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The Data Logger is functioning correctly</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">01</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_MAX_UNITS_OPENED</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">An attempt has been made to open more than 64 units</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">02</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_MEMORY_FAIL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">Not enough memory could be allocated on the host machine</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">03</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_NOT_FOUND</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">No PicoLog 1000 device could be found</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">04</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_FW_FAIL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">Unable to download firmware</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">05</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_OPEN_OPERATION_IN_PROGRESS</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">A request to open a device is in progress</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">06</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_OPERATION_FAILED</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The operation was unsuccessful</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">07</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_NOT_RESPONDING</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The device is not responding to commands from the PC</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">08</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_CONFIG_FAIL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The configuration information in the device has become corrupt or is missing</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">09</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_KERNEL_DRIVER_TOO_OLD</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The kernel driver is too old to be used with the device driver</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">0A</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_EEPROM_CORRUPT</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The EEPROM has become corrupt, so the device will use a default setting</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">0B</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_OS_NOT_SUPPORTED</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The operating system on the PC is not supported by this driver</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">0C</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_HANDLE</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">There is no device with the handle value passed</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">0D</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_PARAMETER</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">A parameter value is not valid</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">0E</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_TIMEBASE</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The timebase is not supported or is invalid</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">0F</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_VOLTAGE_RANGE</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The voltage range is not supported or is invalid</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">10</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_CHANNEL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The channel number is not valid on this device or no channels have been set</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">11</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_TRIGGER_CHANNEL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The channel set for a trigger is not available on this device</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">12</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_CONDITION_CHANNEL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The channel set for a condition is not available on this device</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">13</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_NO_SIGNAL_GENERATOR</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The device does not have a signal generator</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">14</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_STREAMING_FAILED</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">Streaming has failed to start or has stopped without user request</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">15</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_BLOCK_MODE_FAILED</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">Block failed to start - a parameter may have been set wrongly</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">16</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_NULL_PARAMETER</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">A parameter that was required is </span><span class="f_Filename" style="font-size: 0.90rem;">NULL</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">18</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_DATA_NOT_AVAILABLE</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">No data is available from a run block call</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">19</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_STRING_BUFFER_TOO_SMALL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The buffer passed for the information was too small</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">1A</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_ETS_NOT_SUPPORTED</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">ETS is not supported on this device</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">1B</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_AUTO_TRIGGER_TIME_TOO_SHORT</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The auto trigger time is less than the time it will take to collect the data</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">1C</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_BUFFER_STALL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The collection of data has stalled as unread data would be overwritten</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; height:1.8750rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">1D</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; height:1.8750rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_TOO_MANY_SAMPLES</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; height:1.8750rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The number of samples requested is more than available in the current memory segment</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">1E</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_TOO_MANY_SEGMENTS</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">Not possible to create number of segments requested</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">1F</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_PULSE_WIDTH_QUALIFIER</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">A null pointer has been passed in the trigger function or one of the parameters is out of range</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">20</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_DELAY</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">One or more of the hold-off parameters are out of range</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">21</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_SOURCE_DETAILS</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">One or more of the source details are incorrect</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">22</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_CONDITIONS</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">One or more of the conditions are incorrect</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">24</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_DEVICE_SAMPLING</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">An attempt is being made to get stored data while streaming. Stop streaming by calling </span><span class="f_Filename"><a href="pl1000stop.html" class="topiclink">pl1000Stop()</a></span><span class="f_Unspaced" style="font-size: 0.90rem;">.</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">25</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_NO_SAMPLES_AVAILABLE</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">...because a run has not been completed</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">26</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_SEGMENT_OUT_OF_RANGE</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The memory index is out of range</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">27</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_BUSY</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">Data cannot be returned yet</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">28</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_STARTINDEX_INVALID</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The start time to get stored data is out of range</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">29</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_INFO</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The information number requested is not a valid number</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">2A</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INFO_UNAVAILABLE</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The handle is invalid so no information is available about the device. Only </span><span class="f_Filename" style="font-size: 0.90rem;">PICO_DRIVER_VERSION</span><span class="f_Unspaced" style="font-size: 0.90rem;"> is available.</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">2B</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_SAMPLE_INTERVAL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The sample interval selected for streaming is out of range</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">2C</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_TRIGGER_ERROR</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">Not used</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">2D</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_MEMORY</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">Driver cannot allocate memory</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">36</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_DELAY_NULL</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">NULL</span><span class="f_Unspaced" style="font-size: 0.90rem;"> pointer passed as delay parameter</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">37</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_BUFFER</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The buffers for overview data have not been set while streaming</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">3A</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_CANCELLED</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">A block collection has been canceled</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">3B</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_SEGMENT_NOT_USED</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The segment index is not currently being used</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">3F</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_NOT_USED</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">The function is not available</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">41</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_INVALID_STATE</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">Device is in an invalid state</span></p>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; width:3.6875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">43</span></p>
+</td>
+<td style="vertical-align:top; width:17.7500rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Filename" style="font-size: 0.90rem;">PICO_DRIVE_FUNCTION</span></p>
+</td>
+<td style="vertical-align:top; width:22.1875rem; padding:0.0625rem; border:solid thin #999999;"><p class="p_Unspaced" style="page-break-inside: avoid;"><span class="f_Unspaced" style="font-size: 0.90rem;">You called a driver function while another driver function was still being processed</span></p>
+</td>
+</tr>
+</table>
+</div>
+
+	</div> <!-- hmpagebody_scroller -->
+	</div> <!-- hmpagebody -->
+	</div> <!-- topicbody-->
+	</div><!-- topicbox -->
+	<div id="navwrapper">
+	<div id="dragwrapper" class="toolwrapper">
+	<img id="draghandleicon" src="./images/draghandle.svg" alt="resize nav pane" border="0" />
+	</div>
+	<div id="toolbutton_wrapper" class="toolwrapper tablet">
+	<img id="tablet_toolbar_updown_button" class="toolimg tablet" src="./images/toolbar_updown.svg" alt="Show/Hide Toolbars" border="0" />
+	</div>
+	<div id="navsplitbar"></div>
+	<img id="leftright" src="./images/leftright.png" alt="resize nav pane" width="150" height="45" border="0" />
+	<div id="navcontainer">
+	<!-- NAV TABS START -->
+	<nav id="navpane_tabs">
+	<ul id="topictabs" class="tabs">
+	<li id="contentstab" class="hmtabs current" title="Table of Contents"><a id="contentstablink"><i id="toc_icon" class="icon icon-th-list icon-inverse"></i></a></li>
+	<li id="indextab" class="hmtabs" title="Keyword Index"><a id="indextablink"><i id="index_icon" class="icon icon-key-inv icon-inverse"></i></a></li>
+	<li id="searchtab" class="hmtabs" title="Search Topics"><a id="searchtablink"><i id="search_icon" class="icon icon-search icon-inverse"></i></a></li>
+	</ul>
+	</nav>
+	<!-- NAV TABS END -->	
+	<div id="contentsbox" class="navbox on">
+	<iframe name="hmnavigation" id="hmnavigation" class="navframe" src="hmcontent.html" scrolling="no" seamless="seamless" title="Navigation Pane" frameborder="0"></iframe>
+	</div>
+	<div id="indexbox" class="navbox off">
+	<iframe name="hmindex" id="hmindex" class="navframe" src="" scrolling="no" seamless="seamless" title="Keyword Index Pane" frameborder="0"></iframe>	
+	</div> 
+	<div id="searchbox" class="navbox off">
+	<iframe name="hmsearch" id="hmsearch" class="navframe" src="" scrolling="no" seamless="seamless" title="Full Text Search Pane" frameborder="0"></iframe>
+	</div>
+	</div><!-- navcontainer -->
+	</div><!-- navwrapper -->
+	<div id="mob_toolbar_wrapper" data="open">
+	<div id="mob_toolbar" class="mtoolbar">
+		<table id="mob_tb_table" class="mobtoolbar" border="0" width="100%"><tr>
+			<td width="22"></td> 
+			<td id="mob_tb_home" align="center" valign="middle"><div id="mobnavhome" class="mobnav home"></div></td>
+			<td id="mob_tb_toc" align="center" valign="middle"><div id="mobnavtoc" class="mobnav toc"></div></td>
+			<td id="mob_tb_textplus" align="center" valign="middle"><div id="mobnavtextplus" class="mobnav textplus"></div></td>
+			<td id="mob_tb_textminus" align="center" valign="middle"><div id="mobnavtextminus" class="mobnav textminus"></div></td>
+			<td id="mob_tb_previous" align="center" valign="middle"><div id="mobnavprevious" class="mobnav previous"></div></td>
+			<td id="mob_tb_next" align="center" valign="middle"><div id="mobnavnext" class="mobnav next"></div></td>
+			<td>&nbsp;&nbsp;</td>
+			<td id="mob_tb_hamburger" class="mob_hamburger" align="right" valign="top"><div id="phone_mobnav_hamburger_icon" class="mobnav phone"><i id="phone_hamburger_mobnav" class="icon icon-menu icon-inverse"></i></div></td>
+			</tr></table>
+	</div></div>
+	</div> <!-- pagewrapper --> 
+	<div id="dragsurface"></div>
+<script type="text/javascript" src="./js/xmessage.js"></script> 
+<script id="hmPageInitScript" type="text/javascript">
+var fouc=document.getElementById("fouc");
+if (!hmFlags.isEWriter) fouc.parentNode.removeChild(fouc);
+/*! Help & Manual WebHelp 3 Script functions
+Copyright (c) 2015-2017 by Tim Green. All rights reserved. Contact tg@it-authoring.com
+*/
+(function(){var b=sessionVariable.getPV("fontSize"),a=document.getElementsByTagName("html")[0];if(b!==null){a.style.fontSize=b+"%"}else{a.style.fontSize=hmDevice.baseFontSize+"%"}})();window.name="hmMainPage";var moveCheck=null,hmTocLoaded=false,hmTocWidth=0,xMessage=new xMsg("LANDING TOPIC");function initScripts(){hmPopupsObject={};hmFlags.isHmTopic=true;hmFlags.idxLoaded=false;hmFlags.schLoaded=false;hmFlags.searchSession=false;hmFlags.tocClicked=false;hmFlags.layoutTable=false;hmFlags.searchHighlight="";hmFlags.tocInitWidth=0;hmFlags.jumpHighlight=false;hmFlags.hmMainPage="index.html";hmFlags.hmTrackHost="http://www.helpandmanual.com/help/";hmFlags.hmProject="PicoLog 1000 Series Programmer's Guide";hmFlags.hmDefaultPage="index.html";hmFlags.hmCurrentPage="pico_statusvalues.html";hmFlags.hmTOC="hmcontent.html";hmFlags.hmSearchPage="hmftsearch.html";hmFlags.hmIndexPage="hmkwindex.html";hmFlags.thisTopic="pico_statusvalues.html";hmFlags.lastTopic="index.html";hmFlags.isEWriter=false;hmFlags.topicExt=".html";hmFlags.defaultExt=".html";hmFlags.projName="pl1000pg-8";hmFlags.tDescription=document.querySelector("meta[name='description']").getAttribute("content");hmFlags.tKeywords="";hmFlags.hdFormat=false;hmFlags.contextID=(function(){var f;if(/^https??:\/\//im.test(document.location)){f=/contextid=\d*/.exec(window.location.search.substring(1))}else{f=/contextid=\d*/.exec(window.location.hash.substring(1))}return f!=null?f[0]:false})();function e(f){$.getScript(a[f],function(g,i,h){if(d<a.length-1){d++;e(d)}else{hmpage.defaulttopic="index.html";hmWebHelp.hmMainPageInit();hmpage.hmDescription=document.querySelector("meta[name='description']").getAttribute("content");hmpage.hmPicture=""===""?"":"./images/";}})}if(document.location.protocol.substr(0,4)!=="http"){window.History={options:{html4Mode:true}}}var d=0;var a=["./js/helpman_settings.js","./js/jquery.scrollTomin.js","./js/jquery.history.js","./js/hm_webhelp.js"];if(hmFlags.contextID){a.unshift("./js/hmcontextids.js")}if(hmDevice.phone){a.push("./js/mobileNav.js")}var c=document.getElementById("jqscript");c.src="./js/jquery.js";var b=setInterval(function(){if(window.jQuery){clearInterval(b);$.ajaxPrefilter("json script",function(f){f.crossDomain=true});if(hmDevice.embedded&&hmDevice.desktop){$("li#toggle_fullscreen").show()}e(0)}},100)}if(window.addEventListener){window.addEventListener("load",initScripts,false)}else{if(window.attachEvent){window.attachEvent("onload",initScripts)}else{window.onload=initScripts}};
+helpman_mailrecipient = 'Support Staff <support@picotech.com>';
+hmGetUrlParams = function() {/*! 
+* Enter code to save URL parameters to session variables inside the if clause below.
+* This will be executed when your WebHelp is first opened and the session variables
+* you save here will then be available. See the session variables documentation in
+* the V3 Responsive Skins chapter of the help for detailed instructions.
+*/
+if (hmWebHelp.userParams && hmWebHelp.userParams.paramsCount > 0) {
+  
+}
+}
+/*! 
+* Enter the function/s you want to call after topics load in this file.
+* Nothing in this file should be executed on loading! All execution is
+* initiated with a single statement stored in the POSTLOAD_FUNC variable
+* including any arguments. Example:
+* myFunction("red","blue");
+*/
+
+</script>
+</body>
+</html>
