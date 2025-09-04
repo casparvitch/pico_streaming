@@ -221,11 +221,21 @@ class Streamer:
                 f"Sample rate {sample_rate_msps} MS/s exceeds maximum of {max_rate_msps} MS/s for {resolution_bits}-bit resolution."
             )
 
-        # Check if sample rate is excessive for the analog bandwidth of the selected bit-depth
+        # Check if sample rate is excessive for the analog bandwidth.
+        # Bandwidth is dependent on both resolution and voltage range.
+        # (Based on PicoScope 5000A/B Series datasheet)
+        inv_voltage_map = {v: k for k, v in VOLTAGE_RANGE_MAP.items()}
+        voltage_v = inv_voltage_map.get(channel_range_str, 0)
+
         if resolution_bits == 16:
-            bandwidth_mhz = 100
-        else:
-            bandwidth_mhz = 60
+            bandwidth_mhz = 20  # 20 MHz for all ranges
+        elif resolution_bits == 15:
+            # Bandwidth is 70MHz for < ±5V, 60MHz for >= ±5V
+            bandwidth_mhz = 70 if voltage_v < 5.0 else 60
+        else:  # 8-14 bits
+            # Bandwidth is 100MHz for < ±5V, 60MHz for >= ±5V
+            bandwidth_mhz = 100 if voltage_v < 5.0 else 60
+
         # Nyquist rate is 2x bandwidth. A common rule of thumb is 3-5x.
         # Warn if sampling faster than 5x the analog bandwidth.
         if sample_rate_msps > 5 * bandwidth_mhz:
@@ -476,6 +486,7 @@ def main(
         output = f"./output_{timestamp}.hdf5"
 
     logger.info(f"Output file: {output}")
+    logger.info(f"Selected voltage range: {rangev}V -> {channel_range_str}")
 
     try:
         # Create and run the streamer
