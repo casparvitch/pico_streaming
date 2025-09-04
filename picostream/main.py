@@ -430,7 +430,7 @@ VOLTAGE_RANGE_MAP = {
     "--verbose", "-v", is_flag=True, default=False, help="Enable debug logging."
 )
 @click.option(
-    "--plot-pts",
+    "--plot-npts",
     "-n",
     type=int,
     default=4000,
@@ -457,7 +457,7 @@ def main(
     output: Optional[str],
     plot_window: float,
     verbose: bool,
-    plot_pts: int,
+    plot_npts: int,
     hardware_downsample: int,
     downsample_mode: str,
 ) -> None:
@@ -489,7 +489,7 @@ def main(
             output_file=output,
             debug=verbose,
             plot_window_s=plot_window,
-            plot_points=plot_pts,
+            plot_points=plot_npts,
             hardware_downsample=hardware_downsample,
             downsample_mode=downsample_mode,
         )
