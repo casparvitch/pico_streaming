@@ -551,6 +551,7 @@ class HDF5LivePlotter(QMainWindow):
 )
 def main(hdf5_path: str, window: float, decimation: int) -> None:
     """Standalone HDF5 live plotter."""
+    logger.info("Plotter process starting")
     app = QApplication([])
     plotter = HDF5LivePlotter(
         hdf5_path=hdf5_path,
