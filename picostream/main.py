@@ -431,7 +431,7 @@ VOLTAGE_RANGE_MAP = {
 )
 @click.option(
     "--plot-pts",
-    "-p",
+    "-n",
     type=int,
     default=4000,
     help="Target number of points for the plot window. [default: 4000]",
