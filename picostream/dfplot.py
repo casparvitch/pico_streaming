@@ -116,7 +116,6 @@ class HDF5LivePlotter(QMainWindow):
         """Sets up the main window, widgets, and plot layout."""
         self.setWindowTitle("PicoScope Live Plotter - HDF5 Reader")
         self.setGeometry(100, 100, 1200, 800)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
         # Central widget
         central_widget = QWidget()
