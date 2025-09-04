@@ -536,7 +536,7 @@ class HDF5LivePlotter(QMainWindow):
 
 
 @click.command()
-@click.argument("hdf5_path", type=click.Path(exists=True, dir_okay=False))
+@click.argument("hdf5_path", type=click.Path(dir_okay=False))
 @click.option(
     "--window",
     type=float,

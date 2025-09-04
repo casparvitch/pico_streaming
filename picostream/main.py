@@ -353,7 +353,10 @@ class Streamer:
                 str(self.decimation_factor),
             ]
             logger.info(f"Launching plotter: {' '.join(plotter_command)}")
-            self.plotter_process = subprocess.Popen(plotter_command)
+            # Launch in a new session to isolate it from terminal signals (Ctrl+C)
+            self.plotter_process = subprocess.Popen(
+                plotter_command, start_new_session=True
+            )
 
         # Wait for threads to complete. This will block until shutdown is called
         # or acquisition finishes naturally (if auto_stop were enabled).
