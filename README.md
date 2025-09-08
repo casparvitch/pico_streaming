@@ -113,6 +113,47 @@ with h5py.File('my_data.hdf5', 'r') as f:
     print(f"Voltage range: {voltage_mv.min():.2f} mV to {voltage_mv.max():.2f} mV")
 ```
 
+### Processing Large Files
+
+For very large files that do not fit into memory, you can process the data in chunks. The `h5py` library makes this easy by allowing you to slice the dataset on disk without loading the entire file.
+
+This example shows how to iterate through the data, converting it to millivolts and calculating the global minimum and maximum without ever holding the full dataset in RAM.
+
+```python
+import h5py
+import numpy as np
+from conversion_utils import adc_to_mV
+
+# Define a chunk size suitable for your system's RAM
+chunk_size = 10_000_000  # Process 10 million samples at a time
+
+with h5py.File('my_data.hdf5', 'r') as f:
+    dset = f['adc_counts']
+    voltage_range = f.attrs['voltage_range_v']
+    max_adc_val = f.attrs['max_adc']
+
+    num_samples = dset.shape[0]
+
+    # Initialize variables for analysis
+    global_min_mv = float('inf')
+    global_max_mv = float('-inf')
+
+    print(f"Processing {num_samples:,} samples in chunks of {chunk_size:,}...")
+
+    for i in range(0, num_samples, chunk_size):
+        start_idx = i
+        end_idx = min(i + chunk_size, num_samples)
+        adc_chunk = dset[start_idx:end_idx]
+        voltage_chunk_mv = adc_to_mV(adc_chunk, voltage_range, max_adc_val)
+
+        global_min_mv = min(global_min_mv, voltage_chunk_mv.min())
+        global_max_mv = max(global_max_mv, voltage_chunk_mv.max())
+        print(f"  Processed chunk {start_idx:,} to {end_idx:,}")
+
+    print("\nFinished processing.")
+    print(f"Global voltage range: {global_min_mv:.2f} mV to {global_max_mv:.2f} mV")
+```
+
 ## Troubleshooting
 
 -   **"File not found" errors (plotter)**: Ensure the acquisition script (`picostream`) is running and has created the HDF5 file before the plotter tries to read it.
