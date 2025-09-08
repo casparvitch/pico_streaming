@@ -71,6 +71,7 @@ class HDF5LivePlotter(QMainWindow):
         self.hardware_downsample_ratio: int = 1
         self.ch_range: Optional[int] = None
         self.voltage_range_v: Optional[float] = None
+        self.max_adc_val: Optional[int] = None
         self.downsample_mode: Optional[str] = None
 
         # --- Debug Counters ---
@@ -214,6 +215,7 @@ class HDF5LivePlotter(QMainWindow):
             )
 
             self.voltage_range_v = hdf5_file.attrs["voltage_range_v"]
+            self.max_adc_val = hdf5_file.attrs["max_adc"]
             self.downsample_mode = hdf5_file.attrs.get("downsample_mode", "average")
 
             # Update rate label with configured sample rate
@@ -426,9 +428,11 @@ class HDF5LivePlotter(QMainWindow):
         logger.debug(f"voltage_range_v: {self.voltage_range_v}")
 
         # Convert to voltage if we have calibration data
-        if self.voltage_range_v is not None:
+        if self.voltage_range_v is not None and self.max_adc_val is not None:
             try:
-                voltage_data = adc_to_mV(decimated_data, self.voltage_range_v)
+                voltage_data = adc_to_mV(
+                    decimated_data, self.voltage_range_v, self.max_adc_val
+                )
                 logger.debug(
                     f"Voltage conversion successful, range: {voltage_data.min():.1f} to {voltage_data.max():.1f} mV"
                 )
@@ -438,7 +442,7 @@ class HDF5LivePlotter(QMainWindow):
                 voltage_data = decimated_data.astype(float)
         else:
             logger.warning(
-                "Missing calibration data (voltage_range_v), using raw ADC values"
+                "Missing calibration data (voltage_range_v or max_adc_val), using raw ADC values"
             )
             voltage_data = decimated_data.astype(float)
 
