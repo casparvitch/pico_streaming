@@ -40,6 +40,7 @@ class Streamer:
         plot_points: int = 4000,
         hardware_downsample: int = 1,
         downsample_mode: str = "average",
+        offset_v: float = 0.0,
     ) -> None:
         # --- Configuration ---
         self.output_file = output_file
@@ -51,12 +52,14 @@ class Streamer:
             sample_rate_msps,
             pico_downsample_ratio,
             pico_ratio_mode,
+            offset_v,
         ) = self._validate_config(
             resolution_bits,
             sample_rate_msps,
             channel_range_str,
             hardware_downsample,
             downsample_mode,
+            offset_v,
         )
         # Dynamically size buffers to hold a specific duration of data. This makes
         # memory usage proportional to the data rate, providing a consistent
@@ -142,7 +145,7 @@ class Streamer:
         )
 
         self.pico_device.set_channel(
-            "PS5000A_CHANNEL_A", 1, "PS5000A_DC", self.pico_channel_range, 0.0
+            "PS5000A_CHANNEL_A", 1, "PS5000A_DC", self.pico_channel_range, offset_v
         )
         self.pico_device.set_channel(
             "PS5000A_CHANNEL_B", 0, "PS5000A_DC", self.pico_channel_range, 0.0
@@ -198,7 +201,8 @@ class Streamer:
         channel_range_str: str,
         hardware_downsample: int,
         downsample_mode: str,
-    ) -> tuple[float, int, str]:
+        offset_v: float,
+    ) -> tuple[float, int, str, float]:
         """Validates user-provided settings and returns derived configuration."""
         if resolution_bits == 8:
             max_rate_msps = 125.0
@@ -258,7 +262,19 @@ class Streamer:
             pico_downsample_ratio = 1
             pico_ratio_mode = "PS5000A_RATIO_MODE_NONE"
 
-        return sample_rate_msps, pico_downsample_ratio, pico_ratio_mode
+        # Validate analog offset
+        if offset_v != 0.0:
+            if voltage_v >= 5.0:
+                raise ValueError(
+                    f"Analog offset is not supported for voltage ranges >= 5V (selected: {channel_range_str})."
+                )
+            if abs(offset_v) > voltage_v:
+                raise ValueError(
+                    f"Analog offset ({offset_v}V) exceeds the selected voltage range (±{voltage_v}V)."
+                )
+            logger.info(f"Analog offset set to {offset_v:.3f}V.")
+
+        return sample_rate_msps, pico_downsample_ratio, pico_ratio_mode, offset_v
 
     def signal_handler(self, _sig: int, frame: Optional[object]) -> None:
         """Handles Ctrl+C interrupts to initiate a graceful shutdown."""
@@ -441,6 +457,12 @@ VOLTAGE_RANGE_MAP = {
     default="average",
     help="Hardware down-sampling mode. [default: average]",
 )
+@click.option(
+    "--offset",
+    type=float,
+    default=0.0,
+    help="Analog offset in Volts (only for ranges < 5V). [default: 0.0]",
+)
 def main(
     sample_rate: float,
     resolution: str,
@@ -452,6 +474,7 @@ def main(
     plot_npts: int,
     hardware_downsample: int,
     downsample_mode: str,
+    offset: float,
 ) -> None:
     """High-speed data acquisition tool for Picoscope 5000a series."""
     # --- Argument Validation and Processing ---
@@ -499,6 +522,7 @@ def main(
             plot_points=plot_npts,
             hardware_downsample=hardware_downsample,
             downsample_mode=downsample_mode,
+            offset_v=offset,
         )
         streamer.run(app)
     except RuntimeError as e:

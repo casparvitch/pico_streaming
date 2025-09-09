@@ -73,6 +73,7 @@ class HDF5LivePlotter(QMainWindow):
         self.voltage_range_v: Optional[float] = None
         self.max_adc_val: Optional[int] = None
         self.downsample_mode: Optional[str] = None
+        self.analog_offset_v: float = 0.0
 
         # --- Debug Counters ---
         self.update_count: int = 0
@@ -217,6 +218,7 @@ class HDF5LivePlotter(QMainWindow):
             self.voltage_range_v = hdf5_file.attrs["voltage_range_v"]
             self.max_adc_val = hdf5_file.attrs["max_adc"]
             self.downsample_mode = hdf5_file.attrs.get("downsample_mode", "average")
+            self.analog_offset_v = hdf5_file.attrs.get("analog_offset_v", 0.0)
 
             # Update rate label with configured sample rate
             configured_rate_sps = 1e9 / self.sample_interval_ns
@@ -433,6 +435,8 @@ class HDF5LivePlotter(QMainWindow):
                 voltage_data = adc_to_mV(
                     decimated_data, self.voltage_range_v, self.max_adc_val
                 )
+                if self.analog_offset_v != 0.0:
+                    voltage_data += self.analog_offset_v * 1000
                 logger.debug(
                     f"Voltage conversion successful, range: {voltage_data.min():.1f} to {voltage_data.max():.1f} mV"
                 )

@@ -113,6 +113,7 @@ class PicoDevice:
         self.channel_range: Optional[int] = None
         self.voltage_range_v: Optional[float] = None
         self.channel_a_coupling: Optional[str] = None
+        self.analog_offset_v: float = 0.0
         self.channel_a_range_str: Optional[str] = None
 
         # --- Threading and Queues ---
@@ -187,6 +188,7 @@ class PicoDevice:
         if chan == "PS5000A_CHANNEL_A" and en:
             self.channel_a_coupling = coup
             self.channel_a_range_str = voltage_range_str
+            self.analog_offset_v = offset
 
         channel_enum = ps.PS5000A_CHANNEL[chan]
         coupling_enum = ps.PS5000A_COUPLING[coup]
@@ -262,9 +264,10 @@ class PicoDevice:
             "channel_a_coupling": self.channel_a_coupling,
             "channel_a_range": self.channel_a_range_str,
             "downsample_mode": self.downsample_mode,
+            "analog_offset_v": self.analog_offset_v,
             "hardware_downsample_ratio": self.down_sample_ratio,
             "max_adc": self.max_adc.value,
-            "data_format_version": "1.0",
+            "data_format_version": "2.0",
         }
 
         if self.downsample_mode == "aggregate":
