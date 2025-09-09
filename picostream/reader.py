@@ -67,7 +67,23 @@ class PicoStreamReader:
             base_sample_interval_ns * self.hardware_downsample_ratio
         )
         self.voltage_range_v = attrs["voltage_range_v"]
-        self.max_adc_val = attrs["max_adc"]
+        if "max_adc" in attrs:
+            self.max_adc_val = attrs["max_adc"]
+        elif "resolution" in attrs:
+            # Fallback for older files: calculate max_adc from resolution string
+            res_str = attrs["resolution"]  # e.g., "PS5000A_DR_16BIT"
+            try:
+                # Extract bit depth (e.g., 16) from the string
+                res_int = int(res_str.split("_")[-1].replace("BIT", ""))
+                self.max_adc_val = (2 ** (res_int - 1)) - 1
+            except (ValueError, IndexError):
+                raise KeyError(
+                    f"Could not parse 'resolution' attribute to determine max_adc: {res_str}"
+                )
+        else:
+            raise KeyError(
+                "HDF5 file is missing required 'max_adc' or 'resolution' attribute."
+            )
         self.downsample_mode = attrs.get("downsample_mode", "average")
         self.analog_offset_v = attrs.get("analog_offset_v", 0.0)
 
