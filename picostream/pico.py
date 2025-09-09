@@ -8,8 +8,14 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 from loguru import logger
+
 from picosdk.functions import PICO_STATUS
-from picosdk.ps5000a import ps5000a as ps
+from picosdk.errors import CannotFindPicoSDKError
+try:
+    from picosdk.ps5000a import ps5000a as ps
+except CannotFindPicoSDKError:
+    logger.critical("PICOSDK IMPORT FAILED: CANNOT FIND SDK LIB - download from pico website")
+    
 
 
 def check_status(status: int, function_name: str) -> None:
@@ -257,6 +263,7 @@ class PicoDevice:
             "channel_a_range": self.channel_a_range_str,
             "downsample_mode": self.downsample_mode,
             "hardware_downsample_ratio": self.down_sample_ratio,
+            "max_adc": self.max_adc.value,
             "data_format_version": "1.0",
         }
 
